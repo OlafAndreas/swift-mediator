@@ -1,0 +1,44 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: swift:6.4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate DocC site
+        run: |
+          swift package --allow-writing-to-directory docs \
+            generate-documentation --target SwiftMediator \
+            --disable-indexing --transform-for-static-hosting \
+            --hosting-base-path swift-mediator --output-path docs
+          cat > docs/index.html <<'HTML'
+          <!doctype html><meta http-equiv="refresh" content="0; url=/swift-mediator/documentation/swiftmediator/">
+          HTML
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
