@@ -18,7 +18,7 @@ never fetch the dependency:
 
 ```swift
 // Consumer Package.swift: enable only what you use
-.package(url: "https://github.com/<you>/swift-mediator", from: "0.1.0", traits: ["Vapor"])
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.1.0", traits: ["Vapor"])
 ```
 
 Locally, `swift test --enable-all-traits` runs every suite; plain `swift test` runs the core

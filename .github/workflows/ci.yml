@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-linux:
+    name: Core only (Linux, no traits)
+    runs-on: ubuntu-latest
+    container: swift:6.4
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      # Proves the core resolves and builds with only swift-syntax.
+      - run: swift test
+      - name: Dependencies fetched
+        run: ls .build/checkouts
+
+  all-linux:
+    name: All traits (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.4
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      # Two jobs: compiling Vapor and NIO at full parallelism exceeds the runner's memory.
+      - run: swift build --enable-all-traits --build-tests -j 2
+      - run: swift test --enable-all-traits --skip-build
+      - run: swift run --enable-all-traits Example
+
+  all-macos:
+    name: All traits (macOS)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: swift --version
+      - run: swift test --enable-all-traits
+      - run: swift run --enable-all-traits Example
+      - run: swift run --enable-all-traits OrderExample
+
+  benchmarks:
+    name: Benchmarks (release, Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.4
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift run -c release Benchmarks
