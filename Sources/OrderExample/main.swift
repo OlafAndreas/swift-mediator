@@ -22,6 +22,14 @@ enum OrderError: Error { case paymentDeclined(reason: String) }
 /// must not conform.
 protocol TransientError: Error {}
 enum GatewayError: TransientError { case unavailable }
+
+/// Thrown by `Retry` when every attempt failed transiently. Non-transient errors and
+/// successes pass through untouched, so only this path looks different to the caller.
+struct RetryExhausted: Error, CustomStringConvertible {
+    let attempts: Int
+    let last: any Error
+    var description: String { "gave up after \(attempts) attempts; last error: \(last)" }
+}
 struct ValidationError: Error, CustomStringConvertible {
     let problems: [String]
     var description: String { "Validation failed: " + problems.joined(separator: "; ") }
@@ -228,7 +236,10 @@ struct Retry: PipelineBehavior {
         while true {
             do {
                 return try await next(request)
-            } catch let error as any TransientError where attempt < retryable.maxAttempts {
+            } catch let error as any TransientError {
+                guard attempt < retryable.maxAttempts else {
+                    throw RetryExhausted(attempts: attempt, last: error)   // callers can tell retries happened
+                }
                 print("   ↻ attempt \(attempt) failed (\(error)), retrying")
                 attempt += 1
                 try await Task.sleep(for: .milliseconds(20 * attempt))   // linear backoff
