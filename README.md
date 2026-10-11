@@ -22,7 +22,8 @@ never fetch the dependency:
 ```
 
 Locally, `swift test --enable-all-traits` runs every suite; plain `swift test` runs the core
-and testing suites only.
+and testing suites only. Requires Swift 6.2 or later for the `@section` and `@used`
+attributes. Verified on Swift 6.4 on macOS and Linux.
 
 Both share the same handler protocols and the same `@Handler` / `@Behavior` macros.
 
@@ -439,27 +440,3 @@ Container.shared.mediator.register {
 With Factory, `Container.mediator` uses `Mediator.failFast`, which turns those errors into
 a `fatalError` with the message on first resolution. A mediator with a broken registry
 never reaches a request.
-
-## Limitations and next steps
-
-- **Darwin and Linux.** Mach-O images are walked with `getsectiondata`. On ELF the
-  linker's `__start_swift5_mediatr` / `__stop_swift5_mediatr` symbols bound the section in
-  the image the small C shim is linked into, which for statically linked SwiftPM products
-  is the executable. Windows PE is not implemented; explicit registration works there.
-- **Handlers must be `Sendable`.** Structs and final classes are fine. A non-final class
-  must declare `@unchecked Sendable`; the macro marks its `init(resolver:)` as `required`.
-- **Nested types work, with two exceptions.** A nested handler gets its record as a
-  `static let` on the enclosing type. That is not possible inside a generic type or a
-  function body, and the macro says so.
-- **Images loaded after `Mediator.init`** (plugins) are not seen. Add a
-  `_dyld_register_func_for_add_image` callback if you need that.
-- **Handlers and behaviors are instantiated per `send`**, matching MediatR's scoped
-  lifetime. Share state across one call with a `.scoped` registration (core) or give
-  dependencies a Factory scope.
-- **Nested scopes are not supported.** A `send` issued from inside a handler through the
-  injected `Mediator` reuses the outer scope. Calling the root mediator instance directly
-  from a handler opens a new scope instead.
-- Requires Swift 6.2 or later for the `@section` and `@used` attributes (SE-0492).
-  Verified on Swift 6.4 on macOS (Xcode 27) and Linux (swift:latest Docker image; with all
-  traits enabled, build with `-j 2` if the container has under 8 GiB, since compiling
-  Vapor and NIO at full parallelism runs out of memory).
