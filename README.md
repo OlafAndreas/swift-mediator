@@ -14,6 +14,7 @@ never fetch the dependency:
 | `SwiftMediatorFactory` (trait `Factory`) | `SwiftMediator` + [Factory](https://github.com/hmlongco/Factory) | `@Injected(\.keyPath)`; `Container.mediator` provided |
 | `SwiftMediatorTesting` | `SwiftMediator` + Swift Testing | `.resolver` trait, `stub`, `EventRecorder`, `RequestRecorder` |
 | `SwiftMediatorVapor` (trait `Vapor`) | `SwiftMediator` + [Vapor](https://vapor.codes) | `req.mediator`, `req.send(PlaceOrder.self)`, request-seeded values |
+| `SwiftMediatorFluent` (trait `Fluent`, implies `Vapor`) | + [Fluent](https://github.com/vapor/fluent) | `FluentTransaction` behavior for `Transactional` requests |
 
 ```swift
 // Consumer Package.swift: enable only what you use
@@ -91,6 +92,24 @@ struct PlaceOrder: Request {
 Requests that answer with an existing type (`String`, `Order?`) still write
 `typealias Response = Order?`.
 
+## Performance
+
+`swift run -c release Benchmarks`, Apple M-series, Swift 6.4, one million iterations each:
+
+| Operation | ns/op |
+|---|---|
+| direct handler call (baseline) | 0 |
+| send, no behaviors | 267 |
+| send, 3 pass-through behaviors | 484 |
+| send, handler with 1 scoped dependency | 385 |
+| publish, 1 matching handler | 292 |
+| publish, 0 matching handlers | 37 |
+
+What a `send` costs: one dictionary lookup, one scope object, a closure chain with one link
+per behavior, and constructing the handler. Roughly a quarter of a microsecond, plus about
+100 ns per behavior. A `publish` with no matching handler returns before opening a scope.
+These are in-process numbers with trivial handlers; real handlers will dominate.
+
 ## Mapping from MediatR
 
 | MediatR | SwiftMediator |
@@ -151,10 +170,13 @@ Sources/SwiftMediatorMacros      compiler plugin (DiscoverableMacro)
 Sources/Example                  core demo with SimpleResolver
 Sources/OrderExample             Factory-based order purchase flow demo (trait Factory)
 Sources/VaporExample             Vapor app: two routes, request-seeded values (trait Vapor)
+Sources/SwiftMediatorFluent      FluentTransaction behavior, CurrentDatabase (trait Fluent)
+Sources/Benchmarks               micro-benchmarks: swift run -c release Benchmarks
 Tests/SwiftMediatorTests         core: dispatch, ordering, covariance, errors
 Tests/SwiftMediatorTestingTests  .resolver trait, inherited roots, stubs, recorders
 Tests/SwiftMediatorFactoryTests  Factory: .container trait, overrides, FactoryResolver
 Tests/SwiftMediatorVaporTests    Vapor: routes through req.send, seeded scopes, overriding app.mediator
+Tests/SwiftMediatorFluentTests   Fluent: commit, rollback, construction inside the transaction (SQLite)
 Tests/SwiftMediatorMacrosTests   XCTest: macro expansion snapshots and diagnostics
 ```
 
@@ -218,7 +240,11 @@ the test trait uses so that no instance is ever shared between tests.
 
 ## Scopes and lifetimes (core)
 
-Every `send` and `publish` runs inside one resolver scope. The handler and all behaviors
+Every `send` and `publish` runs inside one resolver scope. Components are constructed just
+in time: the outermost behavior first, each inner behavior when the one outside it calls
+`next`, and the handler last. A behavior that sets a task-local around `next` therefore
+shapes how everything inside it is built, which is what makes transaction scoping possible
+without any special support in the core. The handler and all behaviors
 are resolved through that scope, so anything registered as `.scoped` is shared by them
 for the duration of the call and released afterwards. That is the per-request lifetime
 MediatR users get from their DI container's scoped services.
@@ -343,6 +369,38 @@ app.post("orders") { req in try await req.send(PlaceOrder.self) }
 - Keep domain types in a module that imports `SwiftMediator` only. Vapor also has a
   `Request`, and a file importing both must write `SwiftMediator.Request`.
 - Vapor's own `Validatable` is a better fit for a validation behavior than a custom marker.
+- `app.configureMediator { $0.register(...) }` adds registrations, stubs or exclusions to
+  the mediator `app.mediator` builds. Call it before the first access.
+
+## Fluent transactions (`SwiftMediatorFluent`, trait `Fluent`)
+
+```swift
+struct PlaceOrder: Request, Transactional { ... }     // opt in per request
+
+@Handler
+struct PlaceOrderHandler: RequestHandler {
+    let db: any Database                               // the transaction's connection
+    func handle(_ request: PlaceOrder) async throws -> PlaceOrder.Response {
+        try await Order(...).save(on: db)
+        try await Ledger(...).save(on: db)             // throwing here rolls back both
+        ...
+    }
+}
+
+// configure.swift
+app.useFluentTransactions()
+```
+
+`useFluentTransactions()` registers the `FluentTransaction` behavior at order -50 and seeds
+every request scope with `any Database`: the transaction's database inside the behavior,
+otherwise `req.db`. This works because the mediator constructs each component just in time,
+inside the behaviors that wrap it. A handler built inside `req.db.transaction { }` sees the
+transaction's connection through the `CurrentDatabase.transaction` task-local; a handler for a
+non-`Transactional` request sees `req.db`. Event handlers published from within the handler
+run in the same scope and the same transaction.
+
+Tests use an in-memory SQLite database and prove commit on return, rollback on throw, and
+that the same handler without `Transactional` keeps its partial writes.
 
 ## Factory integration (`SwiftMediatorFactory`, trait `Factory`)
 

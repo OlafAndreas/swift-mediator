@@ -221,6 +221,10 @@ public final class Mediator: Sendable {
     ///
     /// Everything is resolved inside one scope: the handler and all behaviors see the same
     /// `.scoped` instances, and can inject `Mediator` and `any Resolver` without registration.
+    ///
+    /// Components are constructed just in time, each inside the dynamic extent of the
+    /// behaviors outside it. A behavior that sets a task-local around `next` (a transaction
+    /// database, a correlation ID) therefore influences how everything inside it is built.
     public func send<R: Request>(_ request: R) async throws -> R.Response {
         guard let entry = requests[ObjectIdentifier(R.self)] else {
             throw MediatorError.noHandler(request: R.self)
@@ -228,13 +232,17 @@ public final class Mediator: Sendable {
         let behaviors = self.behaviors
         return try await resolver.withScope { scope in
             let scoped = MediatorScope(inner: scope, mediator: self)
-            let handler = try entry.make(scoped) as! AnyRequestHandler<R>
 
-            var next: Next<R> = handler.handle
+            var next: Next<R> = { request in
+                let handler = try entry.make(scoped) as! AnyRequestHandler<R>
+                return try await handler.handle(request)
+            }
             for entry in behaviors.reversed() {
-                let behavior = try entry.make(scoped)
                 let inner = next
-                next = { try await behavior.handle($0, next: inner) }
+                next = { request in
+                    let behavior = try entry.make(scoped)
+                    return try await behavior.handle(request, next: inner)
+                }
             }
             return try await next(request)
         }
@@ -244,6 +252,7 @@ public final class Mediator: Sendable {
     /// Handlers run sequentially inside one scope; the first error stops the sequence and is rethrown.
     public func publish<E: Event>(_ event: E) async throws {
         let matching = events.filter { $0.matches(event) }
+        guard !matching.isEmpty else { return }          // no listeners: no scope, no work
         try await resolver.withScope { scope in
             let scoped = MediatorScope(inner: scope, mediator: self)
             for entry in matching {

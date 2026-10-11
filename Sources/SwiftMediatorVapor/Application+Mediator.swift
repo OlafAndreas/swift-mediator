@@ -11,6 +11,7 @@ public extension Application {
     private struct ResolverKey: StorageKey { typealias Value = SimpleResolver }
     private struct MediatorKey: StorageKey { typealias Value = Mediator }
     private struct SeedsKey: StorageKey { typealias Value = [RequestSeed] }
+    private struct ConfigureKey: StorageKey { typealias Value = [@Sendable (inout Mediator.Configuration) -> Void] }
 
     /// The app's composition root. Defaults to `SimpleResolver.processRoot`. Set it in
     /// `configure` before the first request if you want a dedicated root.
@@ -26,7 +27,10 @@ public extension Application {
         get {
             if let existing = storage[MediatorKey.self] { return existing }
             do {
-                let mediator = try Mediator(resolver: resolver)
+                let steps = mediatorConfigurators
+                let mediator = try Mediator(resolver: resolver) { config in
+                    for step in steps { step(&config) }
+                }
                 storage[MediatorKey.self] = mediator
                 return mediator
             } catch {
@@ -34,6 +38,19 @@ public extension Application {
             }
         }
         set { storage[MediatorKey.self] = newValue }
+    }
+
+    var mediatorConfigurators: [@Sendable (inout Mediator.Configuration) -> Void] {
+        get { storage[ConfigureKey.self] ?? [] }
+        set { storage[ConfigureKey.self] = newValue }
+    }
+
+    /// Adds registrations, stubs or exclusions to the mediator that `app.mediator` builds.
+    /// Call before the first access; later calls have no effect on an already built mediator.
+    ///
+    ///     app.configureMediator { $0.register(FluentTransaction.self) }
+    func configureMediator(_ step: @escaping @Sendable (inout Mediator.Configuration) -> Void) {
+        mediatorConfigurators.append(step)
     }
 
     var requestSeeds: [RequestSeed] {
