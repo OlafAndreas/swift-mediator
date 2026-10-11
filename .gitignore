@@ -5,3 +5,4 @@ DerivedData/
 .DS_Store
 .build-linux/
 docs/
+Pitches/*.pdf
