@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/OlafAndreas/swift-mediator/actions/workflows/ci.yml"><img src="https://github.com/OlafAndreas/swift-mediator/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2F5F9E.svg" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/Swift-6.2%2B-1B8A8F.svg" alt="Swift 6.2+">
+  <img src="https://img.shields.io/badge/Swift-6.3%2B-1B8A8F.svg" alt="Swift 6.3+">
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20Linux-2F5F9E.svg" alt="macOS, iOS, Linux">
 </p>
 
@@ -25,7 +25,7 @@ discovered from the binary, so there is nothing to register.
 .product(name: "SwiftMediator", package: "swift-mediator"),
 ```
 
-Swift 6.2 or later, macOS, iOS and Linux. Optional bindings are package traits and cost
+Swift 6.3 or later, macOS, iOS and Linux. Optional bindings are package traits and cost
 nothing unless enabled: `traits: ["Factory"]`, `["Vapor"]`, `["Fluent"]`.
 
 ## Use

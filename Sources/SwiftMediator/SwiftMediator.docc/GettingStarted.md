@@ -19,7 +19,7 @@ package traits, so a consumer who does not enable them never fetches those packa
 .package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.1.0", traits: ["Vapor", "Fluent"])
 ```
 
-Swift 6.2 or later is required for the `@section` and `@used` attributes the macro emits.
+Swift 6.3 or later is required for the `@section` and `@used` attributes the macro emits; Swift 6.2 does not have them.
 
 ## Define a request
 
