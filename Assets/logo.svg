@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="SwiftMediator">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2F5F9E"/>
+      <stop offset="1" stop-color="#1B8A8F"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <!-- behaviors: rings around the handler -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="10">
+    <circle cx="144" cy="128" r="86" opacity="0.26"/>
+    <circle cx="144" cy="128" r="58" opacity="0.5"/>
+    <circle cx="144" cy="128" r="32" opacity="0.82"/>
+  </g>
+  <!-- handler -->
+  <circle cx="144" cy="128" r="13" fill="#FFFFFF"/>
+  <!-- request entering through the rings -->
+  <path d="M 30 128 H 118" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M 104 108 L 126 128 L 104 148" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
