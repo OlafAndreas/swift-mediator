@@ -23,7 +23,11 @@ let package = Package(
         // Core: protocols, Mediator, Resolver seam, binary-section discovery, macro declarations.
         .target(
             name: "SwiftMediator",
-            dependencies: ["SwiftMediatorMacros"]
+            dependencies: ["SwiftMediatorMacros", "SwiftMediatorSectionShim"]
+        ),
+        // C shim exposing the ELF section bounds on Linux. No-op elsewhere.
+        .target(
+            name: "SwiftMediatorSectionShim"
         ),
         // Factory binding: Container.mediator, FactoryResolver.
         .target(

@@ -135,6 +135,7 @@ Sources/SwiftMediatorFactory     Factory binding
   Container+Mediator.swift       Container.mediator (.singleton), re-exports
   FactoryResolver.swift          Resolver backed by a Factory container
 Sources/SwiftMediatorTesting     .resolver trait, EventRecorder, RequestRecorder
+Sources/SwiftMediatorSectionShim C shim for ELF section bounds (Linux)
 Sources/SwiftMediatorMacros      compiler plugin (DiscoverableMacro)
 Sources/Example                  core demo with SimpleResolver
 Sources/OrderExample             Factory-based order purchase flow demo
@@ -340,14 +341,15 @@ never reaches a request.
 
 ## Limitations and next steps
 
-- **Darwin only for now.** The macro already emits an ELF section named
-  `swift5_mediatr` on Linux, but `DiscoverySection` does not read it yet. The usual
-  approach is a C shim exposing the linker's weak `__start_` / `__stop_` symbols.
-  Windows PE is likewise unimplemented. Explicit registration works everywhere.
+- **Darwin and Linux.** Mach-O images are walked with `getsectiondata`. On ELF the
+  linker's `__start_swift5_mediatr` / `__stop_swift5_mediatr` symbols bound the section in
+  the image the small C shim is linked into, which for statically linked SwiftPM products
+  is the executable. Windows PE is not implemented; explicit registration works there.
 - **Handlers must be `Sendable`.** Structs and final classes are fine. A non-final class
   must declare `@unchecked Sendable`; the macro marks its `init(resolver:)` as `required`.
-- **Top-level types only.** The peer record is a file-scope global, so `@Handler` on
-  a nested type will not compile. Move the type to file scope.
+- **Nested types work, with two exceptions.** A nested handler gets its record as a
+  `static let` on the enclosing type. That is not possible inside a generic type or a
+  function body, and the macro says so.
 - **Images loaded after `Mediator.init`** (plugins) are not seen. Add a
   `_dyld_register_func_for_add_image` callback if you need that.
 - **Handlers and behaviors are instantiated per `send`**, matching MediatR's scoped
@@ -357,4 +359,4 @@ never reaches a request.
   injected `Mediator` reuses the outer scope. Calling the root mediator instance directly
   from a handler opens a new scope instead.
 - Requires Swift 6.2 or later for the `@section` and `@used` attributes (SE-0492).
-  Verified on Swift 6.4 / Xcode 27.
+  Verified on Swift 6.4 on macOS (Xcode 27) and Linux (swift:latest Docker image).

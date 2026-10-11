@@ -22,6 +22,29 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
             ])
         }
 
+        // Nested types get a `static let` on the enclosing type instead of a file-scope global.
+        // Static stored properties are not allowed in generic types or local scopes.
+        var isNested = false
+        for enclosing in context.lexicalContext {
+            if enclosing.is(FunctionDeclSyntax.self) || enclosing.is(ClosureExprSyntax.self)
+                || enclosing.is(InitializerDeclSyntax.self) || enclosing.is(AccessorDeclSyntax.self) {
+                throw DiagnosticsError(diagnostics: [
+                    Diagnostic(node: Syntax(node), message: Message.localType(attribute: attributeName(node)))
+                ])
+            }
+            if hasGenericParameters(enclosing) {
+                throw DiagnosticsError(diagnostics: [
+                    Diagnostic(node: Syntax(node), message: Message.genericEnclosingType(attribute: attributeName(node)))
+                ])
+            }
+            if enclosing.is(StructDeclSyntax.self) || enclosing.is(ClassDeclSyntax.self)
+                || enclosing.is(ActorDeclSyntax.self) || enclosing.is(EnumDeclSyntax.self)
+                || enclosing.is(ExtensionDeclSyntax.self) {
+                isNested = true
+            }
+        }
+        let storage = isNested ? "private static" : "private"
+
         // `kind` must be a literal: only constant expressions may initialise a @section global.
         let record = """
         let __mediator_record_\(name): DiscoveryRecord = (
@@ -35,10 +58,10 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
             """
             #if canImport(Darwin)
             @section("__DATA_CONST,__swift5_mediatr") @used
-            private \(raw: record)
-            #elseif os(Linux)
+            \(raw: storage) \(raw: record)
+            #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_mediatr") @used
-            private \(raw: record)
+            \(raw: storage) \(raw: record)
             #endif
             """
         ]
@@ -94,6 +117,14 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
         return nil
     }
 
+    private static func hasGenericParameters(_ node: Syntax) -> Bool {
+        if let d = node.as(StructDeclSyntax.self) { return d.genericParameterClause != nil }
+        if let d = node.as(ClassDeclSyntax.self) { return d.genericParameterClause != nil }
+        if let d = node.as(ActorDeclSyntax.self) { return d.genericParameterClause != nil }
+        if let d = node.as(EnumDeclSyntax.self) { return d.genericParameterClause != nil }
+        return false
+    }
+
     private static func attributeName(_ node: AttributeSyntax) -> String {
         node.attributeName.trimmed.description
     }
@@ -136,11 +167,17 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
 
     enum Message: DiagnosticMessage {
         case notNominal(attribute: String)
+        case localType(attribute: String)
+        case genericEnclosingType(attribute: String)
 
         var message: String {
             switch self {
             case .notNominal(let attribute):
                 "@\(attribute) can only be applied to a struct, class, actor or enum"
+            case .localType(let attribute):
+                "@\(attribute) cannot be applied to a type declared inside a function; move it to type or file scope"
+            case .genericEnclosingType(let attribute):
+                "@\(attribute) cannot be applied to a type nested in a generic type, because the discovery record is a static stored property"
             }
         }
         var diagnosticID: MessageID { MessageID(domain: "SwiftMediatorMacros", id: "\(self)") }

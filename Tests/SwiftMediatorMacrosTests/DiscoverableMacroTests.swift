@@ -50,7 +50,7 @@ final class DiscoverableMacroTests: XCTestCase {
                     Mediator.__erase(CreateUserHandler.self)
                 }
             )
-            #elseif os(Linux)
+            #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_mediatr") @used
             private let __mediator_record_CreateUserHandler: DiscoveryRecord = (
                 kind: 1,
@@ -90,7 +90,7 @@ final class DiscoverableMacroTests: XCTestCase {
                     Mediator.__erase(Logging.self)
                 }
             )
-            #elseif os(Linux)
+            #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_mediatr") @used
             private let __mediator_record_Logging: DiscoveryRecord = (
                 kind: 1,
@@ -129,7 +129,7 @@ final class DiscoverableMacroTests: XCTestCase {
                     Mediator.__erase(H.self)
                 }
             )
-            #elseif os(Linux)
+            #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_mediatr") @used
             private let __mediator_record_H: DiscoveryRecord = (
                 kind: 1,
@@ -167,7 +167,7 @@ final class DiscoverableMacroTests: XCTestCase {
                     Mediator.__erase(H.self)
                 }
             )
-            #elseif os(Linux)
+            #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_mediatr") @used
             private let __mediator_record_H: DiscoveryRecord = (
                 kind: 1,
@@ -178,6 +178,98 @@ final class DiscoverableMacroTests: XCTestCase {
             )
             #endif
             """,
+            macros: macros
+        )
+    }
+
+    func testNestedTypeGetsStaticRecord() {
+        assertMacroExpansion(
+            """
+            enum Orders {
+                @Handler
+                struct CountHandler: RequestHandler {
+                }
+            }
+            """,
+            expandedSource: """
+            enum Orders {
+                struct CountHandler: RequestHandler {
+
+                    init(resolver: any Resolver) throws {
+                    }
+                }
+
+                #if canImport(Darwin)
+                @section("__DATA_CONST,__swift5_mediatr") @used
+                private static let __mediator_record_CountHandler: DiscoveryRecord = (
+                    kind: 1,
+                    reserved: 0,
+                    accessor: {
+                        Mediator.__erase(CountHandler.self)
+                    }
+                )
+                #elseif os(Linux) || os(Android) || os(FreeBSD)
+                @section("swift5_mediatr") @used
+                private static let __mediator_record_CountHandler: DiscoveryRecord = (
+                    kind: 1,
+                    reserved: 0,
+                    accessor: {
+                        Mediator.__erase(CountHandler.self)
+                    }
+                )
+                #endif
+            }
+            """,
+            macros: macros
+        )
+    }
+
+    func testRejectsTypesNestedInGenericTypes() {
+        assertMacroExpansion(
+            """
+            struct Box<T> {
+                @Handler
+                struct H: RequestHandler {
+                }
+            }
+            """,
+            expandedSource: """
+            struct Box<T> {
+                struct H: RequestHandler {
+
+                    init(resolver: any Resolver) throws {
+                    }
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "@Handler cannot be applied to a type nested in a generic type, because the discovery record is a static stored property", line: 2, column: 5)
+            ],
+            macros: macros
+        )
+    }
+
+    func testRejectsLocalTypes() {
+        assertMacroExpansion(
+            """
+            func make() {
+                @Handler
+                struct H: RequestHandler {
+                }
+            }
+            """,
+            expandedSource: """
+            func make() {
+                struct H: RequestHandler {
+
+                    init(resolver: any Resolver) throws {
+                    }
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "@Handler cannot be applied to a type declared inside a function; move it to type or file scope", line: 2, column: 5)
+            ],
             macros: macros
         )
     }

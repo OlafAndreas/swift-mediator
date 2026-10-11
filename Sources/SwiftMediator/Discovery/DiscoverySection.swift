@@ -1,6 +1,7 @@
 #if canImport(Darwin)
 import MachO
 #endif
+import SwiftMediatorSectionShim
 
 /// Walks every loaded image and returns the types recorded by `@Handler` / `@Behavior`.
 public enum DiscoverySection {
@@ -32,9 +33,19 @@ public enum DiscoverySection {
             let records = UnsafeRawPointer(data).assumingMemoryBound(to: DiscoveryRecord.self)
             for i in 0..<count { body(records[i]) }
         }
+        #elseif os(Linux) || os(Android) || os(FreeBSD)
+        // ELF: the linker provides __start_/__stop_ bounds for the section in the image the
+        // shim is linked into (the executable, for statically linked SwiftPM products).
+        guard let start = swiftmediator_elf_section_start(),
+              let stop = swiftmediator_elf_section_stop(),
+              stop > start
+        else { return }
+        let count = (stop - start) / MemoryLayout<DiscoveryRecord>.stride
+        let records = start.assumingMemoryBound(to: DiscoveryRecord.self)
+        for i in 0..<count { body(records[i]) }
         #else
-        // TODO: ELF (via __start_/__stop_ symbols) and PE support. Until then,
-        // register handlers explicitly through `Mediator.Configuration`.
+        // Windows PE is not supported yet. Register handlers explicitly through
+        // `Mediator.Configuration`.
         #endif
     }
 
