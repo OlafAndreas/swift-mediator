@@ -110,20 +110,6 @@ per behavior, and constructing the handler. Roughly a quarter of a microsecond, 
 100 ns per behavior. A `publish` with no matching handler returns before opening a scope.
 These are in-process numbers with trivial handlers; real handlers will dominate.
 
-## Mapping from MediatR
-
-| MediatR | SwiftMediator |
-|---|---|
-| `IRequest<TResponse>` | `Request` with `associatedtype Response` |
-| `IRequestHandler<TReq, TRes>` | `RequestHandler` with `associatedtype Req` |
-| `INotification` / `INotificationHandler<T>` | `Event` / `EventHandler` |
-| `IPipelineBehavior<TReq, TRes>` (open generic) | `PipelineBehavior` with a generic `handle<R>` method |
-| `Behavior<,> where TReq : IValidatable` | `if let v = request as? any Validatable` inside `handle` |
-| Assembly scanning | `@Handler` / `@Behavior` + binary-section walk |
-| `IServiceProvider` | Core: `Resolver` protocol. Factory: `@Injected(\.keyPath)` |
-| `services.AddMediatR(...)` | Core: `Mediator(resolver:)`. Factory: `Container.shared.mediator()` |
-| `MakeGenericType` | Implicit existential opening of `any RequestHandler.Type` |
-
 ## How discovery works
 
 `@Handler` on a top-level type expands to two things:
