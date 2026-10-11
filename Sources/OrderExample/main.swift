@@ -1,3 +1,4 @@
+#if Factory
 import SwiftMediatorFactory   // re-exports FactoryKit and SwiftMediator
 import Foundation
 
@@ -318,3 +319,7 @@ await run("Unknown order returns nil") {
     let missing = try await mediator.send(GetOrder(id: "ord_0000"))
     print("   ✓ found: \(missing == nil ? "nil" : "order")")
 }
+
+#else
+print("OrderExample needs the Factory trait: swift run --traits Factory OrderExample")
+#endif

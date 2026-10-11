@@ -206,8 +206,13 @@ public final class Mediator: Sendable {
         self.behaviors = parent.behaviors
     }
 
-    fileprivate func bound(to scope: any Resolver) -> Mediator {
-        Mediator(parent: self, scope: scope)
+    /// The same registry, resolving through `resolver` instead of this mediator's own.
+    ///
+    /// Used internally so that a `Mediator` injected into a handler shares the handler's
+    /// scope, and by integrations that have per-request values to offer: build a child
+    /// resolver, register the request's values on it, and bind. Cheap: no copying.
+    public func bound(to resolver: any Resolver) -> Mediator {
+        Mediator(parent: self, scope: resolver)
     }
 
     // MARK: Dispatch

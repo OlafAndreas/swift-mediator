@@ -1,3 +1,4 @@
+#if Factory
 import SwiftMediatorFactory   // re-exports FactoryKit and SwiftMediator
 
 // MARK: Dependencies, registered with Factory
@@ -135,3 +136,5 @@ final class ShoutHandler: RequestHandler {
 class OpenClassHandler: EventHandler, @unchecked Sendable {
     func handle(_ event: Unrelated) async throws {}
 }
+
+#endif

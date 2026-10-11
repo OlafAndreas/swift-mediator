@@ -1,3 +1,4 @@
+#if Factory
 import FactoryKit
 import SwiftMediator
 
@@ -23,3 +24,5 @@ public struct FactoryResolver: Resolver {
         return value
     }
 }
+
+#endif

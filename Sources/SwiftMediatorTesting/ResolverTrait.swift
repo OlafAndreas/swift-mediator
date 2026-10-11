@@ -13,10 +13,10 @@ import Testing
 ///     }
 ///
 /// `.resolver` starts from an empty root. `.resolver(inheriting: true)` starts from a
-/// child of the enclosing root: it sees the enclosing registrations, owns its own
-/// instances, and anything registered on it stays local. `.resolver(environment: .mock)`
-/// does the same but through the enclosing root's mock layer, so mock registrations win
-/// and everything else falls back to the real wiring.
+/// flattened copy of the enclosing root: same registrations, fresh singletons, and
+/// anything registered on it stays local. `.resolver(environment: .mock)` copies the
+/// enclosing root's mock layer instead, so mock registrations win and everything else is
+/// the real wiring. Copies are standalone, so no instance is shared between tests.
 public struct ResolverTrait: TestTrait, SuiteTrait, TestScoping {
     public typealias Setup = @Sendable (SimpleResolver) -> Void
 
@@ -51,15 +51,15 @@ public struct ResolverTrait: TestTrait, SuiteTrait, TestScoping {
         }
     }
 
-    /// The root a test will run with: empty, a child of the enclosing root, or a child of
-    /// one of its environment layers. Children own their instances, so singletons are
-    /// fresh per test even when the registration lives on the enclosing root.
+    /// The root a test will run with: empty, a flattened copy of the enclosing root, or a
+    /// flattened copy of one of its environment layers. Copies have no parent and no
+    /// cached singletons, so tests never share an instance.
     func makeRoot() -> SimpleResolver {
         let root: SimpleResolver
         switch base {
         case .empty: root = SimpleResolver()
-        case .inherit: root = SimpleResolver(parent: SimpleResolver.shared)
-        case .environment(let env): root = SimpleResolver(parent: SimpleResolver.shared.environment(env))
+        case .inherit: root = SimpleResolver.shared.copy()
+        case .environment(let env): root = SimpleResolver.shared.environment(env).copy()
         }
         setup?(root)
         return root
@@ -97,10 +97,11 @@ public extension Trait where Self == ResolverTrait {
     /// A fresh, empty `SimpleResolver.shared` for each test.
     static var resolver: ResolverTrait { ResolverTrait(inheriting: false) }
 
-    /// A fresh `SimpleResolver.shared` for each test that falls back to the enclosing root.
+    /// A fresh `SimpleResolver.shared` for each test with the enclosing root's registrations
+    /// and fresh singletons.
     static func resolver(inheriting: Bool) -> ResolverTrait { ResolverTrait(inheriting: inheriting) }
 
-    /// A fresh `SimpleResolver.shared` for each test that resolves through the enclosing
-    /// root's named environment layer, then the root itself.
+    /// A fresh `SimpleResolver.shared` for each test with the enclosing root's named
+    /// environment layer flattened over its registrations, and fresh singletons.
     static func resolver(environment: ResolverEnvironment) -> ResolverTrait { ResolverTrait(environment: environment) }
 }

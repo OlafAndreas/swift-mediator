@@ -81,9 +81,10 @@ public struct ResolverEnvironment: Hashable, Sendable, ExpressibleByStringLitera
 /// lifetimes, and optional environment layers.
 ///
 /// A resolver may have a parent. Lookups check the resolver's own registrations first and
-/// fall back to the parent chain; registrations never flow upward. Instances are owned by
-/// the resolver the lookup started from, so a singleton registered on the root and
-/// resolved through the mock layer is a separate instance from the root's own.
+/// fall back to the parent chain; registrations never flow upward. A singleton belongs to
+/// the resolver it is registered on, so every child, environment layer and per-request
+/// scope sees the same instance. For fresh instances use `copy()`, which flattens the
+/// chain into a standalone resolver with no cached singletons.
 ///
 /// `SimpleResolver.shared` is the app's default composition root: register long-lived
 /// infrastructure (network clients, API providers) there as `.singleton`, services and
@@ -185,12 +186,19 @@ public final class SimpleResolver: Resolver, @unchecked Sendable {
         try await $shared.withValue(shared.environment(environment)) { try await body() }
     }
 
-    /// A new resolver with the same registrations and lifetimes but no instances yet.
-    /// Singletons are created afresh in the copy. Tests use this to start from the app's
-    /// real wiring and override only what they need.
+    /// A standalone resolver with this chain's registrations flattened (child overrides
+    /// parent), no parent, and no instances yet. Singletons are created afresh in the copy.
+    /// Tests use this to start from the app's real wiring, or from one of its environment
+    /// layers, while staying fully isolated from other tests.
     public func copy() -> SimpleResolver {
-        let other = parent.map { SimpleResolver(parent: $0) } ?? SimpleResolver()
-        other.registrations = lock.withLock { registrations }
+        var chain: [SimpleResolver] = []
+        var current: SimpleResolver? = self
+        while let resolver = current { chain.append(resolver); current = resolver.parent }
+        let other = SimpleResolver()
+        for resolver in chain.reversed() {                       // root first, leaf last wins
+            let own = resolver.lock.withLock { resolver.registrations }
+            other.registrations.merge(own) { _, leaf in leaf }
+        }
         return other
     }
 
@@ -230,16 +238,16 @@ public final class SimpleResolver: Resolver, @unchecked Sendable {
 
     // MARK: Internals
 
-    /// Own registration first, then the parent chain.
-    func registration(for type: Any.Type) -> Registration? {
-        if let own = lock.withLock({ registrations[ObjectIdentifier(type)] }) { return own }
+    /// Own registration first, then the parent chain. Returns the resolver that owns it.
+    func registration(for type: Any.Type) -> (Registration, owner: SimpleResolver)? {
+        if let own = lock.withLock({ registrations[ObjectIdentifier(type)] }) { return (own, self) }
         return parent?.registration(for: type)
     }
 
     /// Resolves `type`, caching scoped instances in `scope` (when present) and singletons
-    /// on the root. `via` is the resolver handed to factories.
+    /// on the resolver that owns the registration. `via` is the resolver handed to factories.
     func resolve<T>(_ type: T.Type, scope: Scope?, via: any Resolver) throws -> T {
-        guard let registration = registration(for: type) else {
+        guard let (registration, owner) = registration(for: type) else {
             throw ResolverError.unregistered(type)
         }
         switch registration.lifetime {
@@ -249,10 +257,11 @@ public final class SimpleResolver: Resolver, @unchecked Sendable {
             guard let scope else { return try registration.make(via) as! T }
             return try scope.cached(type) { try registration.make(via) as! T }
         case .singleton:
-            return try lock.withLock {
-                if let existing = singletons[ObjectIdentifier(type)] { return existing as! T }
-                let created = try registration.make(self) as! T   // singletons never capture scoped state
-                singletons[ObjectIdentifier(type)] = created
+            return try owner.lock.withLock {
+                if let existing = owner.singletons[ObjectIdentifier(type)] { return existing as! T }
+                // Built by its owner, so it never captures child-only or scoped state.
+                let created = try registration.make(owner) as! T
+                owner.singletons[ObjectIdentifier(type)] = created
                 return created
             }
         }

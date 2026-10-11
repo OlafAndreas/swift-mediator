@@ -73,9 +73,9 @@ struct EnvironmentTraitTests {
 
     @Test(.resolver(environment: .mock))
     func registeringInsideTheTestStaysLocal() throws {
+        #expect(SimpleResolver.shared.parent == nil, "the test root is a standalone copy")
         SimpleResolver.shared.register(Word.self, instance: Word(value: "local"))
         #expect(try SimpleResolver.shared.resolve(Word.self).value == "local")
-        #expect(try SimpleResolver.shared.parent!.resolve(Word.self).value == "mock")   // the layer itself untouched
     }
 }
 

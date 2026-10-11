@@ -1,3 +1,4 @@
+#if Factory
 import Testing
 import FactoryTesting
 import SwiftMediatorFactory
@@ -105,3 +106,5 @@ import SwiftMediatorFactory
         }
     }
 }
+
+#endif

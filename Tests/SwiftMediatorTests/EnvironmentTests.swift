@@ -57,15 +57,30 @@ struct Mailer: Sendable { let id: Int }
         #expect(root.environment("mock") === root.environment(.mock))
     }
 
-    @Test func layersOwnTheirInstances() throws {
+    @Test func singletonsBelongToTheResolverThatRegisteredThem() throws {
         let root = makeRoot()
         let mock = root.environment(.mock)
+        let request = SimpleResolver(parent: root)
 
+        let viaRoot = try root.resolve(Mailer.self)
+        #expect(try mock.resolve(Mailer.self).id == viaRoot.id, "a layer sees the root's instance")
+        #expect(try request.resolve(Mailer.self).id == viaRoot.id, "so does a per-request child")
+
+        mock.register(Mailer.self, lifetime: .singleton) { _ in Mailer(id: -1) }
+        #expect(try mock.resolve(Mailer.self).id == -1, "an override on the layer is the layer's own")
+        #expect(try root.resolve(Mailer.self).id == viaRoot.id, "and leaves the root alone")
+    }
+
+    @Test func copyFlattensTheChainWithFreshSingletons() throws {
+        let root = makeRoot()
+        root.register((any Gateway).self, in: .mock, instance: FakeGateway())
         let rootMailer = try root.resolve(Mailer.self)
-        let mockMailer = try mock.resolve(Mailer.self)
-        #expect(rootMailer.id != mockMailer.id, "singleton resolved through a layer is that layer's instance")
-        #expect(try mock.resolve(Mailer.self).id == mockMailer.id, "and is cached there")
-        #expect(try root.resolve(Mailer.self).id == rootMailer.id, "root keeps its own")
+
+        let copy = root.environment(.mock).copy()
+        #expect(copy.parent == nil)
+        #expect(try copy.resolve((any Gateway).self).name == "fake", "layer registration kept")
+        #expect(try copy.resolve(Mailer.self).id != rootMailer.id, "root registration kept, instance fresh")
+        #expect(try root.resolve(Mailer.self).id == rootMailer.id)
     }
 
     @Test func mediatorCanBeBuiltOnALayer() async throws {

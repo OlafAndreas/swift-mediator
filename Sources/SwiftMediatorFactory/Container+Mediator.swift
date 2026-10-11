@@ -1,3 +1,4 @@
+#if Factory
 @_exported import FactoryKit
 @_exported import SwiftMediator
 
@@ -40,3 +41,5 @@ public extension Mediator {
         }
     }
 }
+
+#endif

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 import PackageDescription
 import CompilerPluginSupport
 
@@ -8,16 +8,25 @@ let package = Package(
     products: [
         /// Core mediator. No third-party runtime dependencies.
         .library(name: "SwiftMediator", targets: ["SwiftMediator"]),
-        /// Core + Factory (hmlongco/Factory) integration. Re-exports both.
-        .library(name: "SwiftMediatorFactory", targets: ["SwiftMediatorFactory"]),
         /// Swift Testing support for the core: `.resolver` trait, stubs, recorders.
         .library(name: "SwiftMediatorTesting", targets: ["SwiftMediatorTesting"]),
+        /// Core + Factory (hmlongco/Factory). Requires the `Factory` trait.
+        .library(name: "SwiftMediatorFactory", targets: ["SwiftMediatorFactory"]),
+        /// Core + Vapor glue: `req.mediator`, request-scoped values. Requires the `Vapor` trait.
+        .library(name: "SwiftMediatorVapor", targets: ["SwiftMediatorVapor"]),
         .executable(name: "Example", targets: ["Example"]),
         .executable(name: "OrderExample", targets: ["OrderExample"]),
+        .executable(name: "VaporExample", targets: ["VaporExample"]),
+    ],
+    traits: [
+        .trait(name: "Factory", description: "Enables SwiftMediatorFactory and fetches hmlongco/Factory."),
+        .trait(name: "Vapor", description: "Enables SwiftMediatorVapor and fetches vapor/vapor."),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"605.0.0"),
+        // Fetched only when a target depends on them under an enabled trait.
         .package(url: "https://github.com/hmlongco/Factory.git", from: "3.4.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.122.0"),
     ],
     targets: [
         // Core: protocols, Mediator, Resolver seam, binary-section discovery, macro declarations.
@@ -29,18 +38,26 @@ let package = Package(
         .target(
             name: "SwiftMediatorSectionShim"
         ),
-        // Factory binding: Container.mediator, FactoryResolver.
-        .target(
-            name: "SwiftMediatorFactory",
-            dependencies: [
-                "SwiftMediator",
-                .product(name: "FactoryKit", package: "Factory"),
-            ]
-        ),
         // Testing support: per-test SimpleResolver.shared, event/request recorders.
         .target(
             name: "SwiftMediatorTesting",
             dependencies: ["SwiftMediator"]
+        ),
+        // Factory binding: Container.mediator, FactoryResolver. Empty without the trait.
+        .target(
+            name: "SwiftMediatorFactory",
+            dependencies: [
+                "SwiftMediator",
+                .product(name: "FactoryKit", package: "Factory", condition: .when(traits: ["Factory"])),
+            ]
+        ),
+        // Vapor binding: Application.mediator, Request.mediator. Empty without the trait.
+        .target(
+            name: "SwiftMediatorVapor",
+            dependencies: [
+                "SwiftMediator",
+                .product(name: "Vapor", package: "vapor", condition: .when(traits: ["Vapor"])),
+            ]
         ),
         // Compiler plugin implementing @Handler / @Behavior.
         .macro(
@@ -58,6 +75,10 @@ let package = Package(
             name: "OrderExample",
             dependencies: ["SwiftMediatorFactory"]
         ),
+        .executableTarget(
+            name: "VaporExample",
+            dependencies: ["SwiftMediatorVapor"]
+        ),
         .testTarget(
             name: "SwiftMediatorTests",
             dependencies: ["SwiftMediator"]
@@ -70,7 +91,15 @@ let package = Package(
             name: "SwiftMediatorFactoryTests",
             dependencies: [
                 "SwiftMediatorFactory",
-                .product(name: "FactoryTesting", package: "Factory"),
+                .product(name: "FactoryTesting", package: "Factory", condition: .when(traits: ["Factory"])),
+            ]
+        ),
+        .testTarget(
+            name: "SwiftMediatorVaporTests",
+            dependencies: [
+                "SwiftMediatorVapor",
+                .product(name: "VaporTesting", package: "vapor", condition: .when(traits: ["Vapor"])),
+                .target(name: "SwiftMediatorFactory", condition: .when(traits: ["Factory"])),
             ]
         ),
         .testTarget(

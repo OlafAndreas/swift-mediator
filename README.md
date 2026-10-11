@@ -5,13 +5,23 @@ pipeline behaviors are discovered at startup the same way Swift Testing discover
 `@Test` functions: a macro writes a small metadata record into a dedicated binary
 section, and the mediator walks that section when it is created.
 
-Three products:
+Four products, two of them behind package traits so that consumers who do not enable them
+never fetch the dependency:
 
 | Product | Depends on | Dependencies for handlers |
 |---|---|---|
 | `SwiftMediator` | nothing at runtime | `Resolver` protocol; `SimpleResolver.shared` as the default root |
-| `SwiftMediatorFactory` | `SwiftMediator` + [Factory](https://github.com/hmlongco/Factory) | `@Injected(\.keyPath)`; `Container.mediator` provided |
+| `SwiftMediatorFactory` (trait `Factory`) | `SwiftMediator` + [Factory](https://github.com/hmlongco/Factory) | `@Injected(\.keyPath)`; `Container.mediator` provided |
 | `SwiftMediatorTesting` | `SwiftMediator` + Swift Testing | `.resolver` trait, `stub`, `EventRecorder`, `RequestRecorder` |
+| `SwiftMediatorVapor` (trait `Vapor`) | `SwiftMediator` + [Vapor](https://vapor.codes) | `req.mediator`, `req.send(PlaceOrder.self)`, request-seeded values |
+
+```swift
+// Consumer Package.swift: enable only what you use
+.package(url: "https://github.com/<you>/swift-mediator", from: "0.1.0", traits: ["Vapor"])
+```
+
+Locally, `swift test --enable-all-traits` runs every suite; plain `swift test` runs the core
+and testing suites only.
 
 Both share the same handler protocols and the same `@Handler` / `@Behavior` macros.
 
@@ -131,17 +141,20 @@ Sources/SwiftMediator            core library (no runtime dependencies)
   Mediator.swift                 Mediator, Mediator.Configuration, MediatorError
   Macros.swift                   @Handler / @Behavior declarations
   Discovery/                     record layout and section walker
-Sources/SwiftMediatorFactory     Factory binding
+Sources/SwiftMediatorVapor       Vapor binding (trait Vapor)
+Sources/SwiftMediatorFactory     Factory binding (trait Factory)
   Container+Mediator.swift       Container.mediator (.singleton), re-exports
   FactoryResolver.swift          Resolver backed by a Factory container
 Sources/SwiftMediatorTesting     .resolver trait, EventRecorder, RequestRecorder
 Sources/SwiftMediatorSectionShim C shim for ELF section bounds (Linux)
 Sources/SwiftMediatorMacros      compiler plugin (DiscoverableMacro)
 Sources/Example                  core demo with SimpleResolver
-Sources/OrderExample             Factory-based order purchase flow demo
+Sources/OrderExample             Factory-based order purchase flow demo (trait Factory)
+Sources/VaporExample             Vapor app: two routes, request-seeded values (trait Vapor)
 Tests/SwiftMediatorTests         core: dispatch, ordering, covariance, errors
 Tests/SwiftMediatorTestingTests  .resolver trait, inherited roots, stubs, recorders
 Tests/SwiftMediatorFactoryTests  Factory: .container trait, overrides, FactoryResolver
+Tests/SwiftMediatorVaporTests    Vapor: routes through req.send, seeded scopes, overriding app.mediator
 Tests/SwiftMediatorMacrosTests   XCTest: macro expansion snapshots and diagnostics
 ```
 
@@ -197,9 +210,11 @@ try await SimpleResolver.using(.mock) {                        // switch the tas
 ```
 
 `.mock` and `.preview` are predefined; any string literal is a valid environment, and
-layers nest (`root.environment(.mock).environment("offline")`). A layer owns the instances
-it resolves: a singleton registered on the root and resolved through the mock layer is a
-separate instance from the root's own, so switching environments never leaks state.
+layers nest (`root.environment(.mock).environment("offline")`). A singleton belongs to the
+resolver it is registered on: a layer or a per-request child resolving a root singleton
+gets the root's instance, and an override registered on the layer is the layer's own.
+`copy()` flattens a chain into a standalone resolver with fresh singletons, which is what
+the test trait uses so that no instance is ever shared between tests.
 
 ## Scopes and lifetimes (core)
 
@@ -254,10 +269,10 @@ import SwiftMediatorTesting
 ```
 
 - `.resolver` gives each test an empty `SimpleResolver.shared`; tests run in parallel safely.
-- `.resolver(inheriting: true)` makes each test a child of the enclosing root: it sees the
-  enclosing registrations, owns its own singletons, and local registrations stay local.
-- `.resolver(environment: .mock)` is the same through the enclosing root's mock layer, so
-  mock registrations win and everything else falls back to the real wiring.
+- `.resolver(inheriting: true)` gives each test a flattened copy of the enclosing root:
+  same registrations, fresh singletons, local registrations stay local.
+- `.resolver(environment: .mock)` copies the enclosing root's mock layer instead, so mock
+  registrations win and everything else is the real wiring.
 - `.resolver { root in ... }` seeds the root before each test.
 - `Configuration.stub(Request.self) { ... }` answers a request with a closure, replacing any
   discovered handler. This is the `Mock<IMediator>` equivalent.
@@ -287,7 +302,49 @@ Swift Testing runs tests concurrently by default and nothing here opts out of th
 - Tests that use an explicit `Mediator(resolver:)` with their own `SimpleResolver()` need
   no trait and are parallel-safe by construction.
 
-## Factory integration (`SwiftMediatorFactory`)
+## Vapor integration (`SwiftMediatorVapor`, trait `Vapor`)
+
+```swift
+// Domain module: imports SwiftMediator only, so `Request` is unambiguous.
+struct PlaceOrder: Request, Codable {
+    struct Response: Codable, Sendable { let id: UUID }
+    let customerEmail: String
+}
+
+@Handler
+struct PlaceOrderHandler: RequestHandler {
+    let store: OrderStore        // from app.resolver
+    let logger: Logger           // pre-seeded from the Vapor request
+    let user: AuthenticatedUser  // seeded by your app, see below
+    func handle(_ request: PlaceOrder) async throws -> PlaceOrder.Response { ... }
+}
+
+// configure.swift
+extension PlaceOrder: Content {}
+extension PlaceOrder.Response: Content {}
+
+app.resolver.register(OrderStore.self, lifetime: .singleton) { _ in OrderStore() }
+app.seedRequests { req, scope in
+    scope.register(Database.self, instance: req.db)
+    scope.register(AuthenticatedUser.self, instance: try req.auth.require(AuthenticatedUser.self))
+}
+
+app.post("orders") { req in try await req.send(PlaceOrder.self) }
+```
+
+- `app.resolver` is the composition root (defaults to `SimpleResolver.processRoot`).
+- `app.mediator` is built on first access with discovery on and fails fast on a broken
+  registry. Assign your own to override, for example with stubs in tests.
+- `req.mediator` binds the app's mediator to a child resolver seeded with the `Request`,
+  its `Logger`, and whatever `app.seedRequests` adds. Handlers take those as plain stored
+  properties.
+- `req.send(PlaceOrder.self)` decodes the body and sends; `req.sendQuery` does the same from
+  the query string. Behaviors see the decoded request, which middleware never can.
+- Keep domain types in a module that imports `SwiftMediator` only. Vapor also has a
+  `Request`, and a file importing both must write `SwiftMediator.Request`.
+- Vapor's own `Validatable` is a better fit for a validation behavior than a custom marker.
+
+## Factory integration (`SwiftMediatorFactory`, trait `Factory`)
 
 - `Container.mediator` is a `.singleton` Factory provided by the library. Resolve it with
   `Container.shared.mediator()` or `@Injected(\.mediator)`. Handlers may inject the
@@ -359,4 +416,6 @@ never reaches a request.
   injected `Mediator` reuses the outer scope. Calling the root mediator instance directly
   from a handler opens a new scope instead.
 - Requires Swift 6.2 or later for the `@section` and `@used` attributes (SE-0492).
-  Verified on Swift 6.4 on macOS (Xcode 27) and Linux (swift:latest Docker image).
+  Verified on Swift 6.4 on macOS (Xcode 27) and Linux (swift:latest Docker image; with all
+  traits enabled, build with `-j 2` if the container has under 8 GiB, since compiling
+  Vapor and NIO at full parallelism runs out of memory).
