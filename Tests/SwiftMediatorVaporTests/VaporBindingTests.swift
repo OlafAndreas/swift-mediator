@@ -48,6 +48,7 @@ struct EchoHandler: RequestHandler {
 func withTestApp(_ body: (Application) async throws -> Void) async throws {
     let app = try await Application.make(.testing)
     app.resolver = SimpleResolver()                          // isolated root per test
+    app.mediatorDiscovery = .thisModule()
     let counter = Counter()
     app.resolver.register(Counter.self, instance: counter)
     app.seedRequests { _, scope in
@@ -74,7 +75,7 @@ func withTestApp(_ body: (Application) async throws -> Void) async throws {
             try await app.testing().test(.POST, "echo", beforeRequest: { req in
                 try req.content.encode(Echo(text: "hei"))
             }) { res in
-                #expect(res.status == .ok)
+                #expect(res.status == .ok, "\(res.body.string)")
                 let body = try res.content.decode(Echo.Response.self)
                 #expect(body.text == "hei")
                 #expect(!body.requestID.isEmpty)
@@ -109,7 +110,7 @@ func withTestApp(_ body: (Application) async throws -> Void) async throws {
     @Test func appMediatorIsBuiltOnceAndCanBeOverridden() async throws {
         try await withTestApp { app in
             #expect(app.mediator === app.mediator)
-            app.mediator = try Mediator(resolver: app.resolver, discovery: false) {
+            app.mediator = try Mediator(resolver: app.resolver, discovery: .none) {
                 $0.stub(Echo.self) { _ in .init(text: "stubbed", requestID: "-", scopeID: 0) }
             }
             try await app.testing().test(.POST, "echo", beforeRequest: { try $0.content.encode(Echo(text: "x")) }) { res in

@@ -13,7 +13,7 @@ import Testing
     }
 
     @Test func discoversAnnotatedTypes() throws {
-        let types = DiscoverySection.discoveredTypes().map { "\($0)" }
+        let types = DiscoverySection.discoveredTypes(.thisModule()).map { "\($0)" }
         for expected in ["PingHandler", "OuterTracer", "InnerTracer", "UserCreatedHandler",
                          "AuditUserEvents", "CustomInitHandler", "OpenClassHandler",
                          "WhichUnitHandler", "UnitObserver", "ChainHandler", "ChainedHandler"] {
@@ -24,7 +24,7 @@ import Testing
 
     @Test func sendRunsHandlerThroughBehaviorsInOrder() async throws {
         let (resolver, log) = makeResolver()
-        let mediator = try Mediator(resolver: resolver)
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule())
 
         let response = try await mediator.send(Ping(text: "verden"))
 
@@ -37,13 +37,13 @@ import Testing
 
     @Test func missingHandlerThrows() async throws {
         let (resolver, _) = makeResolver()
-        let mediator = try Mediator(resolver: resolver)
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule())
         await #expect(throws: MediatorError.self) { _ = try await mediator.send(Unhandled()) }
     }
 
     @Test func publishFansOutWithCovariance() async throws {
         let (resolver, log) = makeResolver()
-        let mediator = try Mediator(resolver: resolver)
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule())
 
         try await mediator.publish(UserCreated(userID: 1))
         try await mediator.publish(UserDeleted(userID: 2))
@@ -67,7 +67,7 @@ import Testing
 
     @Test func macroRespectsExistingResolverInit() async throws {
         let (resolver, _) = makeResolver()
-        let mediator = try Mediator(resolver: resolver)
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule())
         #expect(try await mediator.send(Shout(text: "hei")) == "HEI!")
     }
 
@@ -92,7 +92,7 @@ import Testing
     }
 
     @Test func unresolvedDependencySurfacesResolverError() async throws {
-        let mediator = try Mediator(resolver: SimpleResolver())   // nothing registered
+        let mediator = try Mediator(resolver: SimpleResolver(), discovery: .thisModule())   // nothing registered
         await #expect(throws: ResolverError.self) { _ = try await mediator.send(Ping(text: "x")) }
     }
 }

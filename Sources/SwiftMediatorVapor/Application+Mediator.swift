@@ -12,6 +12,14 @@ public extension Application {
     private struct MediatorKey: StorageKey { typealias Value = Mediator }
     private struct SeedsKey: StorageKey { typealias Value = [RequestSeed] }
     private struct ConfigureKey: StorageKey { typealias Value = [@Sendable (inout Mediator.Configuration) -> Void] }
+    private struct DiscoveryKey: StorageKey { typealias Value = Discovery }
+
+    /// Which `@Handler` / `@Behavior` records `app.mediator` registers. `.all` by default.
+    /// Set before the first access.
+    var mediatorDiscovery: Discovery {
+        get { storage[DiscoveryKey.self] ?? .all }
+        set { storage[DiscoveryKey.self] = newValue }
+    }
 
     /// The app's composition root. Defaults to `SimpleResolver.processRoot`. Set it in
     /// `configure` before the first request if you want a dedicated root.
@@ -28,7 +36,7 @@ public extension Application {
             if let existing = storage[MediatorKey.self] { return existing }
             do {
                 let steps = mediatorConfigurators
-                let mediator = try Mediator(resolver: resolver) { config in
+                let mediator = try Mediator(resolver: resolver, discovery: mediatorDiscovery) { config in
                     for step in steps { step(&config) }
                 }
                 storage[MediatorKey.self] = mediator

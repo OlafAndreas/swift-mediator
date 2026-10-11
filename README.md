@@ -149,6 +149,17 @@ Event handlers may declare `typealias Note = any UserEvent` to receive every eve
 conforming to that protocol, which is the equivalent of MediatR's covariant
 notification handlers.
 
+Discovery sees every record in every loaded image. Restrict it with a `Discovery` policy
+when independent modules share a binary, which is what happens when SwiftPM links all
+test targets into one bundle:
+
+```swift
+try Mediator(discovery: .thisModule())                 // this module's handlers only
+try Mediator(discovery: .modules(["Orders", "Billing"]))
+try Mediator(discovery: .none) { $0.register(...) }    // explicit only
+app.mediatorDiscovery = .thisModule()                  // Vapor
+```
+
 ## Layout
 
 ```

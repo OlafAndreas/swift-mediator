@@ -9,6 +9,9 @@ public enum DiscoverySection {
     /// thread-safe, so any number of mediators created in parallel share one scan.
     public static func discoveredTypes() -> [Any.Type] { cached }
 
+    /// The discovered types a policy admits.
+    public static func discoveredTypes(_ policy: Discovery) -> [Any.Type] { cached.filter { policy($0) } }
+
     /// Re-walks the loaded images. Only needed if a plugin was loaded after first use.
     public static func rescan() -> [Any.Type] {
         var types: [Any.Type] = []

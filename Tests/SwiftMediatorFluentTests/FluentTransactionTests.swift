@@ -75,6 +75,7 @@ struct WhereAmIHandler: RequestHandler {
 func withFluentApp(_ body: (Application) async throws -> Void) async throws {
     let app = try await Application.make(.testing)
     app.resolver = SimpleResolver()
+    app.mediatorDiscovery = .thisModule()
     app.databases.use(.sqlite(.memory), as: .sqlite)
     app.migrations.add(CreateLedger())
     try await app.autoMigrate()
@@ -96,7 +97,7 @@ func withFluentApp(_ body: (Application) async throws -> Void) async throws {
     @Test func commitsWhenTheHandlerReturns() async throws {
         try await withFluentApp { app in
             try await app.testing().test(.POST, "transfer", beforeRequest: { try $0.content.encode(TransferTwo(fail: false)) }) { res in
-                #expect(res.status == .ok)
+                #expect(res.status == .ok, "\(res.body.string)")
                 let count = try res.content.decode(Int.self)
                 #expect(count == 2)
             }
@@ -107,7 +108,7 @@ func withFluentApp(_ body: (Application) async throws -> Void) async throws {
     @Test func rollsBackWhenTheHandlerThrows() async throws {
         try await withFluentApp { app in
             try await app.testing().test(.POST, "transfer", beforeRequest: { try $0.content.encode(TransferTwo(fail: true)) }) { res in
-                #expect(res.status == .internalServerError)
+                #expect(res.status == .internalServerError, "\(res.body.string)")
             }
             #expect(try await Ledger.query(on: app.db).count() == 0, "both inserts rolled back")
         }
@@ -116,7 +117,7 @@ func withFluentApp(_ body: (Application) async throws -> Void) async throws {
     @Test func nonTransactionalRequestsKeepPartialWrites() async throws {
         try await withFluentApp { app in
             try await app.testing().test(.POST, "transfer-unguarded", beforeRequest: { try $0.content.encode(TransferTwoUnguarded(fail: true)) }) { res in
-                #expect(res.status == .internalServerError)
+                #expect(res.status == .internalServerError, "\(res.body.string)")
             }
             #expect(try await Ledger.query(on: app.db).count() == 2, "no transaction, so the rows stay")
         }

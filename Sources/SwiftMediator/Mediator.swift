@@ -58,9 +58,10 @@ public final class Mediator: Sendable {
 
         public init() {}
 
-        /// Scans the binary for `@Handler` / `@Behavior` records and registers them all.
-        public mutating func discover() {
-            for type in DiscoverySection.discoveredTypes() {
+        /// Scans the binary for `@Handler` / `@Behavior` records and registers those the
+        /// policy admits.
+        public mutating func discover(_ policy: Discovery = .all) {
+            for type in DiscoverySection.discoveredTypes(policy) {
                 register(discovered: type)
             }
         }
@@ -164,16 +165,17 @@ public final class Mediator: Sendable {
     /// - Parameters:
     ///   - resolver: Supplies dependencies to handlers and behaviors. Defaults to the
     ///     task-local `SimpleResolver.shared`, the app's composition root.
-    ///   - discovery: When `true`, scans the binary for `@Handler` / `@Behavior` types.
+    ///   - discovery: Which `@Handler` / `@Behavior` records to register. `.all` by default;
+    ///     `.thisModule()` or `.modules([...])` when several independent modules share a binary.
     ///   - configure: Explicit registrations, stubs and observers, applied after discovery.
     /// - Throws: `MediatorError.conflictingHandlers` or `MediatorError.notAHandler`.
     public init(
         resolver: any Resolver = SimpleResolver.shared,
-        discovery: Bool = true,
+        discovery: Discovery = .all,
         configure: (inout Configuration) -> Void = { _ in }
     ) throws {
         var configuration = Configuration()
-        if discovery { configuration.discover() }
+        configuration.discover(discovery)
         configure(&configuration)
 
         if let stray = configuration.unrecognized.first {
@@ -195,6 +197,15 @@ public final class Mediator: Sendable {
         self.requests = requests
         self.events = configuration.events
         self.behaviors = configuration.behaviors.sorted { $0.order < $1.order }
+    }
+
+    /// Convenience: `discovery: false` registers nothing automatically.
+    public convenience init(
+        resolver: any Resolver = SimpleResolver.shared,
+        discovery: Bool,
+        configure: (inout Configuration) -> Void = { _ in }
+    ) throws {
+        try self.init(resolver: resolver, discovery: discovery ? .all : .none, configure: configure)
     }
 
     /// A view of `parent` that resolves through `scope`. Handed to handlers that inject

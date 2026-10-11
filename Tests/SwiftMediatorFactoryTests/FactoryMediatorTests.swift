@@ -7,8 +7,16 @@ import SwiftMediatorFactory
 /// created inside `send` see this test's registrations and tests can run in parallel.
 @Suite(.container) struct FactoryMediatorTests {
 
+    /// Runs per test inside the container trait: discover this module's handlers only, so
+    /// other test targets linked into the same bundle cannot leak in.
+    init() {
+        Container.shared.mediator.register {
+            Mediator.failFast(resolver: FactoryResolver(Container.shared), discovery: .thisModule())
+        }
+    }
+
     @Test func discoversAnnotatedTypes() throws {
-        let types = DiscoverySection.discoveredTypes().map { "\($0)" }
+        let types = DiscoverySection.discoveredTypes(.thisModule()).map { "\($0)" }
         #expect(types.contains("PingHandler"))
         #expect(types.contains("OuterTracer"))
         #expect(types.contains("InnerTracer"))

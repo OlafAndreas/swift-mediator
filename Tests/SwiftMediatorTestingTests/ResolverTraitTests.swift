@@ -46,7 +46,7 @@ struct AppModule: ResolverModule {
 
     @Test func mediatorDefaultsToTheTestRoot() async throws {
         SimpleResolver.shared.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "test"))
-        let mediator = try Mediator()
+        let mediator = try Mediator(discovery: .thisModule())
 
         let result = try await mediator.send(PlaceOrder(sku: "TEA"))
         #expect(result == "test: TEA @ 999")
@@ -54,7 +54,7 @@ struct AppModule: ResolverModule {
 
     @Test func stubReplacesADiscoveredHandler() async throws {
         SimpleResolver.shared.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "test"))
-        let mediator = try Mediator { config in
+        let mediator = try Mediator(discovery: .thisModule()) { config in
             config.stub(GetPrice.self) { _ in 42 }
         }
 
@@ -65,7 +65,7 @@ struct AppModule: ResolverModule {
     @Test func eventRecorderCapturesPublishedEvents() async throws {
         SimpleResolver.shared.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "test"))
         let events = EventRecorder()
-        let mediator = try Mediator { config in
+        let mediator = try Mediator(discovery: .thisModule()) { config in
             config.stub(GetPrice.self) { _ in 7 }
             config.record(events)
         }
@@ -81,7 +81,7 @@ struct AppModule: ResolverModule {
     @Test func requestRecorderSeesEveryRequestIncludingNested() async throws {
         SimpleResolver.shared.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "test"))
         let requests = RequestRecorder()
-        let mediator = try Mediator { config in
+        let mediator = try Mediator(discovery: .thisModule()) { config in
             config.stub(GetPrice.self) { _ in 1 }
             config.register(instance: requests)
         }
@@ -109,7 +109,7 @@ struct AppModule: ResolverModule {
 
     @Test func overridesOnlyWhatTheTestNeeds() async throws {
         SimpleResolver.shared.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "fake"))
-        let mediator = try Mediator { $0.stub(GetPrice.self) { _ in 5 } }
+        let mediator = try Mediator(discovery: .thisModule()) { $0.stub(GetPrice.self) { _ in 5 } }
 
         #expect(try await mediator.send(PlaceOrder(sku: "TEA")) == "fake: TEA @ 5")
     }
@@ -120,7 +120,7 @@ struct AppModule: ResolverModule {
         root.register(OrderAPI.self, instance: OrderAPI(client: NetworkClient(), label: "seeded"))
     })
     func traitCanSeedTheRoot() async throws {
-        let mediator = try Mediator { $0.stub(GetPrice.self) { _ in 3 } }
+        let mediator = try Mediator(discovery: .thisModule()) { $0.stub(GetPrice.self) { _ in 3 } }
         #expect(try await mediator.send(PlaceOrder(sku: "TEA")) == "seeded: TEA @ 3")
     }
 }

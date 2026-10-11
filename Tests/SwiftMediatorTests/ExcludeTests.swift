@@ -14,7 +14,7 @@ import SwiftMediator
 
     @Test func excludedBehaviorIsNotRun() async throws {
         let (resolver, log) = makeResolver()
-        let mediator = try Mediator(resolver: resolver) { config in
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule()) { config in
             config.exclude(OuterTracer.self)
             config.exclude(UnitObserver.self)
         }
@@ -27,7 +27,7 @@ import SwiftMediator
 
     @Test func excludedRequestHandlerLeavesTheRequestUnhandled() async throws {
         let (resolver, _) = makeResolver()
-        let mediator = try Mediator(resolver: resolver) { $0.exclude(PingHandler.self) }
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule()) { $0.exclude(PingHandler.self) }
 
         #expect(mediator.handlerType(for: Ping.self) == nil)
         await #expect(throws: MediatorError.self) { _ = try await mediator.send(Ping(text: "x")) }
@@ -35,7 +35,7 @@ import SwiftMediator
 
     @Test func excludedEventHandlerIsSkipped() async throws {
         let (resolver, log) = makeResolver()
-        let mediator = try Mediator(resolver: resolver) { $0.exclude(AuditUserEvents.self) }
+        let mediator = try Mediator(resolver: resolver, discovery: .thisModule()) { $0.exclude(AuditUserEvents.self) }
 
         try await mediator.publish(UserCreated(userID: 7))
 

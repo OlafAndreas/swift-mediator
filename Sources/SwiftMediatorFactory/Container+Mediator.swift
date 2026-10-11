@@ -31,7 +31,7 @@ public extension Mediator {
     /// throwing. For use inside Factory closures and other non-throwing composition roots.
     static func failFast(
         resolver: any Resolver,
-        discovery: Bool = true,
+        discovery: Discovery = .all,
         configure: (inout Configuration) -> Void = { _ in }
     ) -> Mediator {
         do {
@@ -39,6 +39,14 @@ public extension Mediator {
         } catch {
             fatalError("SwiftMediator configuration error: \(error)")
         }
+    }
+
+    static func failFast(
+        resolver: any Resolver,
+        discovery: Bool,
+        configure: (inout Configuration) -> Void = { _ in }
+    ) -> Mediator {
+        failFast(resolver: resolver, discovery: discovery ? .all : .none, configure: configure)
     }
 }
 
