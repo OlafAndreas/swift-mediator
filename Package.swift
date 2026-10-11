@@ -28,6 +28,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"605.0.0"),
+        // Keyed type discovery over SE-0492 section records. Local checkout until it is published.
+        .package(path: "../swift-discovery"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.4.0"),
         // Fetched only when a target depends on them under an enabled trait.
         .package(url: "https://github.com/hmlongco/Factory.git", from: "3.4.0"),
@@ -36,14 +38,13 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.9.0"),
     ],
     targets: [
-        // Core: protocols, Mediator, Resolver seam, binary-section discovery, macro declarations.
+        // Core: protocols, Mediator, Resolver seam, macro declarations. Discovery comes from SwiftDiscovery.
         .target(
             name: "SwiftMediator",
-            dependencies: ["SwiftMediatorMacros", "SwiftMediatorSectionShim"]
-        ),
-        // C shim exposing the ELF section bounds on Linux. No-op elsewhere.
-        .target(
-            name: "SwiftMediatorSectionShim"
+            dependencies: [
+                "SwiftMediatorMacros",
+                .product(name: "SwiftDiscovery", package: "swift-discovery"),
+            ]
         ),
         // Testing support: per-test SimpleResolver.shared, event/request recorders.
         .target(
@@ -78,6 +79,7 @@ let package = Package(
         .macro(
             name: "SwiftMediatorMacros",
             dependencies: [
+                .product(name: "SwiftDiscoveryMacroSupport", package: "swift-discovery"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ]

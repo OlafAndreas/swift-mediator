@@ -13,7 +13,7 @@ import SwiftMediator
         let policy = Discovery.thisModule()
         #expect(policy(PingHandler.self))
         #expect(!policy(Mediator.self))
-        #expect(DiscoverySection.discoveredTypes(policy).allSatisfy { Discovery.moduleName(of: $0) == "SwiftMediatorTests" })
+        #expect(Mediator.discoveredTypes(policy).allSatisfy { Discovery.moduleName(of: $0) == "SwiftMediatorTests" })
     }
 
     @Test func noneRegistersNothing() throws {

@@ -36,7 +36,8 @@ struct PlaceOrderHandler: RequestHandler {
 ## Pitfalls
 
 - Do not rely on ordering between event handlers. Registration order under discovery is
-  binary layout order. If B must follow A, have A publish a second event, or merge them.
+  qualified-name order, which is stable but meaningless. If B must follow A, have A publish
+  a second event, or merge them.
 - A failing event handler fails the `send` that published. For side effects that must not
   break the main flow, catch inside the handler or run them detached.
 - Events are not commands. If the caller needs the work to happen, it is a request.

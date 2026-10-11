@@ -1,3 +1,4 @@
+import SwiftDiscovery
 public enum MediatorError: Error, CustomStringConvertible {
     /// `send` was called for a request with no registered handler.
     case noHandler(request: Any.Type)
@@ -61,7 +62,7 @@ public final class Mediator: Sendable {
         /// Scans the binary for `@Handler` / `@Behavior` records and registers those the
         /// policy admits.
         public mutating func discover(_ policy: Discovery = .all) {
-            for type in DiscoverySection.discoveredTypes(policy) {
+            for type in Mediator.discoveredTypes(policy) {
                 register(discovered: type)
             }
         }

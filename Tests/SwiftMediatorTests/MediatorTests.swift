@@ -13,7 +13,7 @@ import Testing
     }
 
     @Test func discoversAnnotatedTypes() throws {
-        let types = DiscoverySection.discoveredTypes(.thisModule()).map { "\($0)" }
+        let types = Mediator.discoveredTypes(.thisModule()).map { "\($0)" }
         for expected in ["PingHandler", "OuterTracer", "InnerTracer", "UserCreatedHandler",
                          "AuditUserEvents", "CustomInitHandler", "OpenClassHandler",
                          "WhichUnitHandler", "UnitObserver", "ChainHandler", "ChainedHandler"] {
@@ -49,11 +49,10 @@ import Testing
         try await mediator.publish(UserDeleted(userID: 2))
         try await mediator.publish(Unrelated())
 
-        #expect(await log.lines == [
-            "created 1", "audit UserCreated 1",
-            "audit UserDeleted 2",
-            "unrelated",
-        ])
+        // Listener order within one publish is not part of the contract.
+        let lines = await log.lines
+        #expect(Set(lines.prefix(2)) == ["created 1", "audit UserCreated 1"])
+        #expect(Array(lines.dropFirst(2)) == ["audit UserDeleted 2", "unrelated"])
     }
 
     @Test func explicitRegistrationWithoutDiscovery() async throws {

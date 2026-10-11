@@ -34,7 +34,7 @@ extension Orders {
 
     @Test func nestedTypesAreDiscovered() {
         // String(describing:) prints only the innermost name; the qualified form needs reflecting.
-        let names = DiscoverySection.discoveredTypes(.thisModule()).map { String(reflecting: $0) }
+        let names = Mediator.discoveredTypes(.thisModule()).map { String(reflecting: $0) }
         #expect(names.contains { $0.hasSuffix("Orders.CountHandler") })
         #expect(names.contains { $0.hasSuffix("Orders.Deeper.TwiceHandler") })
         #expect(names.contains { $0.hasSuffix("Orders.ShoutListener") })

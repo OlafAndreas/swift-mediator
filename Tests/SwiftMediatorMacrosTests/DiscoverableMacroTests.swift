@@ -42,21 +42,27 @@ final class DiscoverableMacroTests: XCTestCase {
             }
 
             #if canImport(Darwin)
-            @section("__DATA_CONST,__swift5_mediatr") @used
-            private let __mediator_record_CreateUserHandler: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(CreateUserHandler.self)
+            @section("__DATA_CONST,__swift5_discov") @used
+            private let __mediator_record_CreateUserHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
-            @section("swift5_mediatr") @used
-            private let __mediator_record_CreateUserHandler: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(CreateUserHandler.self)
+            @section("swift5_discov") @used
+            private let __mediator_record_CreateUserHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -82,21 +88,27 @@ final class DiscoverableMacroTests: XCTestCase {
             }
 
             #if canImport(Darwin)
-            @section("__DATA_CONST,__swift5_mediatr") @used
-            private let __mediator_record_Logging: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(Logging.self)
+            @section("__DATA_CONST,__swift5_discov") @used
+            private let __mediator_record_Logging: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
-            @section("swift5_mediatr") @used
-            private let __mediator_record_Logging: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(Logging.self)
+            @section("swift5_discov") @used
+            private let __mediator_record_Logging: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -121,21 +133,27 @@ final class DiscoverableMacroTests: XCTestCase {
             }
 
             #if canImport(Darwin)
-            @section("__DATA_CONST,__swift5_mediatr") @used
-            private let __mediator_record_H: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(H.self)
+            @section("__DATA_CONST,__swift5_discov") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
-            @section("swift5_mediatr") @used
-            private let __mediator_record_H: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(H.self)
+            @section("swift5_discov") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -159,21 +177,27 @@ final class DiscoverableMacroTests: XCTestCase {
             }
 
             #if canImport(Darwin)
-            @section("__DATA_CONST,__swift5_mediatr") @used
-            private let __mediator_record_H: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(H.self)
+            @section("__DATA_CONST,__swift5_discov") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
-            @section("swift5_mediatr") @used
-            private let __mediator_record_H: DiscoveryRecord = (
-                kind: 1,
-                reserved: 0,
-                accessor: {
-                    Mediator.__erase(H.self)
+            @section("swift5_discov") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -200,21 +224,27 @@ final class DiscoverableMacroTests: XCTestCase {
                 }
 
                 #if canImport(Darwin)
-                @section("__DATA_CONST,__swift5_mediatr") @used
-                private static let __mediator_record_CountHandler: DiscoveryRecord = (
-                    kind: 1,
-                    reserved: 0,
-                    accessor: {
-                        Mediator.__erase(CountHandler.self)
+                @section("__DATA_CONST,__swift5_discov") @used
+                private static let __mediator_record_CountHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                    version: 1,
+                    flags: 0,
+                    type: {
+                        unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                    },
+                    key: {
+                        unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                     }
                 )
                 #elseif os(Linux) || os(Android) || os(FreeBSD)
-                @section("swift5_mediatr") @used
-                private static let __mediator_record_CountHandler: DiscoveryRecord = (
-                    kind: 1,
-                    reserved: 0,
-                    accessor: {
-                        Mediator.__erase(CountHandler.self)
+                @section("swift5_discov") @used
+                private static let __mediator_record_CountHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                    version: 1,
+                    flags: 0,
+                    type: {
+                        unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                    },
+                    key: {
+                        unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                     }
                 )
                 #endif

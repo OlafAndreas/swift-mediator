@@ -4,33 +4,40 @@ Zero registration, the same way Swift Testing finds `@Test`.
 
 ## The record
 
-``Handler()`` and ``Behavior()`` expand to a file-scope global (or a `static let` on the
-enclosing type) placed in a dedicated binary section with `@section` and `@used`:
+Discovery is provided by [SwiftDiscovery](https://github.com/OlafAndreas/swift-discovery),
+a small package extracted from this one. ``Handler()`` and ``Behavior()`` expand to a
+file-scope global (or a `static let` on the enclosing type) placed in a dedicated binary
+section with `@section` and `@used`:
 
 ```swift
-@section("__DATA_CONST,__swift5_mediatr") @used
-private let __mediator_record_PlaceOrderHandler: DiscoveryRecord = (
-    kind: 1, reserved: 0,
-    accessor: { Mediator.__erase(PlaceOrderHandler.self) }
+@section("__DATA_CONST,__swift5_discov") @used
+private let __mediator_record_PlaceOrderHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+    version: 1, flags: 0,
+    type: { unsafeBitCast(PlaceOrderHandler.self as Any.Type, to: UnsafeRawPointer.self) },
+    key: { unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self) }
 )
 ```
 
 Only constant expressions may initialise such a global, so the record is a tuple whose
-accessor is a non-capturing C function pointer returning the type metadata.
+accessors are non-capturing C function pointers returning type metadata. The `key` names
+``MediatorComponents``, which is how the mediator's records stay separate from any other
+`@Discoverable` records in the same binary. The expansion spells everything out, so your
+module never imports SwiftDiscovery.
 
 ## The scan
 
-``DiscoverySection`` walks every loaded image once, on first use, and caches the result.
+`Discoverable.types(for:)` walks every loaded image once, on first use, and caches the
+result per key. ``Mediator/discoveredTypes(_:)`` is the mediator's view of it.
 
 - On Mach-O, `getsectiondata` reads the section from each image.
 - On ELF (Linux, Android, FreeBSD), a small C shim exposes the linker's weak
-  `__start_swift5_mediatr` and `__stop_swift5_mediatr` symbols, which bound the section in
-  the image the shim is linked into. For statically linked SwiftPM products that is the
+  `__start_swift5_discov` and `__stop_swift5_discov` symbols, which bound the section in the
+  image the shim is linked into. For statically linked SwiftPM products that is the
   executable.
 - Windows PE is not implemented; register explicitly there.
 
-Images loaded after the first scan are not seen; ``DiscoverySection/rescan()`` exists for
-that case.
+Results are deduplicated and sorted by qualified name, so registration order is stable.
+Images loaded after the first scan are not seen; `Discoverable.rescan()` exists for that case.
 
 Each recovered type is cast to `any RequestHandler.Type`, `any EventHandler.Type` or
 `any PipelineBehavior.Type`. The cast opens the existential into a generic registration
@@ -53,5 +60,6 @@ try Mediator(discovery: .none) { $0.register(OnlyThis.self) }
 - A handler nested in a generic type or declared inside a function cannot carry a record;
   the macro reports it.
 - A handler in a library that is not linked into the final binary is not discovered.
-  Discovery sees what is loaded, not what is in the source tree.
+  Discovery sees what is loaded, not what is in the source tree. A static-archive member
+  that nothing references is never linked, and its record goes with it.
 - Dead stripping keeps the records because they are marked `@used`.

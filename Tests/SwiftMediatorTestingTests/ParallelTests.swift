@@ -1,5 +1,6 @@
 import Testing
 import SwiftMediator
+import SwiftDiscovery
 @testable import SwiftMediatorTesting
 
 struct Say: Request { typealias Response = String }
@@ -45,10 +46,10 @@ struct SayHandler: RequestHandler {
     }
 
     @Test func discoveryIsScannedOnceAndSharedAcrossMediators() throws {
-        let a = DiscoverySection.discoveredTypes()
-        let b = DiscoverySection.discoveredTypes()
+        let a = Mediator.discoveredTypes()
+        let b = Mediator.discoveredTypes()
         #expect(a.count == b.count)
-        #expect(a.count == DiscoverySection.rescan().count)
+        #expect(a.count == Discoverable.rescan()[ObjectIdentifier(MediatorComponents.self)]?.count)
     }
 }
 

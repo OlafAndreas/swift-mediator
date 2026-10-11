@@ -1,11 +1,12 @@
 import SwiftDiagnostics
+import SwiftDiscoveryMacroSupport
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// Implements `@Handler` and `@Behavior`.
 ///
-/// - Peer: emits a `DiscoveryRecord` into the mediator's binary section.
+/// - Peer: emits a SwiftDiscovery record under `MediatorComponents`.
 /// - Member: synthesises `init(resolver:)` from stored properties lacking defaults.
 public struct DiscoverableMacro: PeerMacro, MemberMacro {
 
@@ -16,55 +17,12 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        guard let name = nominalName(of: declaration) else {
-            throw DiagnosticsError(diagnostics: [
-                Diagnostic(node: Syntax(node), message: Message.notNominal(attribute: attributeName(node)))
-            ])
-        }
-
-        // Nested types get a `static let` on the enclosing type instead of a file-scope global.
-        // Static stored properties are not allowed in generic types or local scopes.
-        var isNested = false
-        for enclosing in context.lexicalContext {
-            if enclosing.is(FunctionDeclSyntax.self) || enclosing.is(ClosureExprSyntax.self)
-                || enclosing.is(InitializerDeclSyntax.self) || enclosing.is(AccessorDeclSyntax.self) {
-                throw DiagnosticsError(diagnostics: [
-                    Diagnostic(node: Syntax(node), message: Message.localType(attribute: attributeName(node)))
-                ])
-            }
-            if hasGenericParameters(enclosing) {
-                throw DiagnosticsError(diagnostics: [
-                    Diagnostic(node: Syntax(node), message: Message.genericEnclosingType(attribute: attributeName(node)))
-                ])
-            }
-            if enclosing.is(StructDeclSyntax.self) || enclosing.is(ClassDeclSyntax.self)
-                || enclosing.is(ActorDeclSyntax.self) || enclosing.is(EnumDeclSyntax.self)
-                || enclosing.is(ExtensionDeclSyntax.self) {
-                isNested = true
-            }
-        }
-        let storage = isNested ? "private static" : "private"
-
-        // `kind` must be a literal: only constant expressions may initialise a @section global.
-        let record = """
-        let __mediator_record_\(name): DiscoveryRecord = (
-            kind: 1,
-            reserved: 0,
-            accessor: { Mediator.__erase(\(name).self) }
+        let placement = try DiscoveryRecordSyntax.placement(of: node, on: declaration, in: context)
+        return DiscoveryRecordSyntax.declarations(
+            recording: placement,
+            under: ["SwiftMediator.MediatorComponents"],
+            identifierPrefix: "__mediator_record_"
         )
-        """
-
-        return [
-            """
-            #if canImport(Darwin)
-            @section("__DATA_CONST,__swift5_mediatr") @used
-            \(raw: storage) \(raw: record)
-            #elseif os(Linux) || os(Android) || os(FreeBSD)
-            @section("swift5_mediatr") @used
-            \(raw: storage) \(raw: record)
-            #endif
-            """
-        ]
     }
 
     // MARK: Member — init(resolver:)
@@ -109,26 +67,6 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
 
     // MARK: Helpers
 
-    private static func nominalName(of declaration: some DeclSyntaxProtocol) -> String? {
-        if let d = declaration.as(StructDeclSyntax.self) { return d.name.trimmed.text }
-        if let d = declaration.as(ClassDeclSyntax.self) { return d.name.trimmed.text }
-        if let d = declaration.as(ActorDeclSyntax.self) { return d.name.trimmed.text }
-        if let d = declaration.as(EnumDeclSyntax.self) { return d.name.trimmed.text }
-        return nil
-    }
-
-    private static func hasGenericParameters(_ node: Syntax) -> Bool {
-        if let d = node.as(StructDeclSyntax.self) { return d.genericParameterClause != nil }
-        if let d = node.as(ClassDeclSyntax.self) { return d.genericParameterClause != nil }
-        if let d = node.as(ActorDeclSyntax.self) { return d.genericParameterClause != nil }
-        if let d = node.as(EnumDeclSyntax.self) { return d.genericParameterClause != nil }
-        return false
-    }
-
-    private static func attributeName(_ node: AttributeSyntax) -> String {
-        node.attributeName.trimmed.description
-    }
-
     private static func hasResolverInit(_ declaration: some DeclGroupSyntax) -> Bool {
         declaration.memberBlock.members.contains { member in
             guard let initializer = member.decl.as(InitializerDeclSyntax.self) else { return false }
@@ -163,24 +101,5 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
             }
         }
         return nil
-    }
-
-    enum Message: DiagnosticMessage {
-        case notNominal(attribute: String)
-        case localType(attribute: String)
-        case genericEnclosingType(attribute: String)
-
-        var message: String {
-            switch self {
-            case .notNominal(let attribute):
-                "@\(attribute) can only be applied to a struct, class, actor or enum"
-            case .localType(let attribute):
-                "@\(attribute) cannot be applied to a type declared inside a function; move it to type or file scope"
-            case .genericEnclosingType(let attribute):
-                "@\(attribute) cannot be applied to a type nested in a generic type, because the discovery record is a static stored property"
-            }
-        }
-        var diagnosticID: MessageID { MessageID(domain: "SwiftMediatorMacros", id: "\(self)") }
-        var severity: DiagnosticSeverity { .error }
     }
 }
