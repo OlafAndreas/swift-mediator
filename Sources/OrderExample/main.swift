@@ -1,4 +1,5 @@
 import SwiftMediatorFactory   // re-exports FactoryKit and SwiftMediator
+import Foundation
 
 // MARK: - Domain
 
@@ -16,6 +17,11 @@ struct Order: Sendable {
 }
 
 enum OrderError: Error { case paymentDeclined(reason: String) }
+
+/// Errors a `Retry` behavior may retry. Permanent failures (declined card, validation)
+/// must not conform.
+protocol TransientError: Error {}
+enum GatewayError: TransientError { case unavailable }
 struct ValidationError: Error, CustomStringConvertible {
     let problems: [String]
     var description: String { "Validation failed: " + problems.joined(separator: "; ") }
@@ -38,9 +44,19 @@ actor Inventory {
     enum InventoryError: Error { case outOfStock(String) }
 }
 
+/// Simulated outage: the gateway fails `remaining` times with a transient error, then recovers.
+final class Outages: @unchecked Sendable {
+    private var remaining = 0
+    private let lock = NSLock()
+    func schedule(_ count: Int) { lock.withLock { remaining = count } }
+    func consume() -> Bool { lock.withLock { guard remaining > 0 else { return false }; remaining -= 1; return true } }
+}
+
 struct PaymentGateway: Sendable {
+    let outages: Outages
     func charge(_ amountOre: Int, to email: String) throws -> String {
-        guard amountOre < 100_000 else { throw OrderError.paymentDeclined(reason: "limit exceeded") }
+        if outages.consume() { throw GatewayError.unavailable }                       // transient
+        guard amountOre < 100_000 else { throw OrderError.paymentDeclined(reason: "limit exceeded") }   // permanent
         return "txn_\(email.prefix(3))_\(amountOre)"
     }
 }
@@ -54,7 +70,8 @@ struct Mailer: Sendable {
 extension Container {
     var orderRepository: Factory<OrderRepository> { self { OrderRepository() }.singleton }
     var inventory: Factory<Inventory>             { self { Inventory() }.singleton }
-    var paymentGateway: Factory<PaymentGateway>   { self { PaymentGateway() } }
+    var outages: Factory<Outages>                 { self { Outages() }.singleton }
+    var paymentGateway: Factory<PaymentGateway>   { self { PaymentGateway(outages: self.outages()) } }
     var mailer: Factory<Mailer>                   { self { Mailer() } }
 }
 
@@ -64,9 +81,16 @@ protocol Validatable {
     func validate() -> [String]
 }
 
+/// A request opts into retries by conforming. Only safe for requests whose handler has no
+/// side effects before the point that can fail transiently, or is idempotent.
+protocol Retryable {
+    var maxAttempts: Int { get }
+}
+extension Retryable { var maxAttempts: Int { 3 } }
+
 // MARK: - Messages
 
-struct PlaceOrder: Request, Validatable {
+struct PlaceOrder: Request, Validatable, Retryable {
     /// A nested type named `Response` satisfies the associated type; no typealias needed.
     struct Response: Sendable { let orderID: String; let transactionID: String; let totalOre: Int }
 
@@ -191,6 +215,28 @@ struct Logging: PipelineBehavior {
     }
 }
 
+/// Calls `next` again on a transient error, up to `maxAttempts`. Sits inside Logging so one
+/// log line covers all attempts, and outside Timing so each attempt is timed on its own.
+/// Everything inside it, the handler included, runs once per attempt.
+@Behavior
+struct Retry: PipelineBehavior {
+    static var order: Int { 50 }
+
+    func handle<R: Request>(_ request: R, next: Next<R>) async throws -> R.Response {
+        guard let retryable = request as? any Retryable else { return try await next(request) }
+        var attempt = 1
+        while true {
+            do {
+                return try await next(request)
+            } catch let error as any TransientError where attempt < retryable.maxAttempts {
+                print("   ↻ attempt \(attempt) failed (\(error)), retrying")
+                attempt += 1
+                try await Task.sleep(for: .milliseconds(20 * attempt))   // linear backoff
+            }
+        }
+    }
+}
+
 @Behavior
 struct Timing: PipelineBehavior {
     static var order: Int { 100 }      // innermost: measures only the handler
@@ -237,6 +283,23 @@ await run("Payment declined publishes PaymentFailed") {
     _ = try await mediator.send(PlaceOrder(
         customerEmail: "big@spender.example",
         lines: [OrderLine(sku: "SKU-TEA", quantity: 100, unitPriceOre: 12_900)]
+    ))
+}
+
+await run("Transient gateway outage is retried") {
+    Container.shared.outages().schedule(2)            // fail twice, succeed on the third attempt
+    let confirmation = try await mediator.send(PlaceOrder(
+        customerEmail: "olaf@example.com",
+        lines: [OrderLine(sku: "SKU-TEA", quantity: 1, unitPriceOre: 12_900)]
+    ))
+    print("   ✓ \(confirmation.orderID) succeeded after retries")
+}
+
+await run("Outage that outlasts the retry budget fails") {
+    Container.shared.outages().schedule(5)
+    _ = try await mediator.send(PlaceOrder(
+        customerEmail: "olaf@example.com",
+        lines: [OrderLine(sku: "SKU-TEA", quantity: 1, unitPriceOre: 12_900)]
     ))
 }
 
