@@ -1,5 +1,5 @@
 {
-  "originHash" : "bb2ef7f5b909267c16a43588657de70569e73cfdcb004b161f2b33df266c6e7b",
+  "originHash" : "6737add0d394c4f069531e1bbd678c8f2282dbd5d8f6a3db71fbe9df08e0b31c",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -186,8 +186,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/OlafAndreas/swift-discovery.git",
       "state" : {
-        "revision" : "531f9b1a3d7357f6d435e3ae79aca966e9d60f66",
-        "version" : "0.1.1"
+        "revision" : "a6c22c04d2927345bc6601c64f997f52989c33f4",
+        "version" : "0.2.0"
       }
     },
     {
@@ -305,6 +305,15 @@
       "state" : {
         "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
         "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "swift-sections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OlafAndreas/swift-sections.git",
+      "state" : {
+        "revision" : "29c0bdf1cd2b69660f458873bf75585af9c75e69",
+        "version" : "0.1.0"
       }
     },
     {
