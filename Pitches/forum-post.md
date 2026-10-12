@@ -1,6 +1,6 @@
 SE-0492 gave libraries the writing half of binary-section placement and listed the reading half, "a unified runtime API for reading section contents across platforms and modules", as a future direction. This pitch is that follow-on: one runtime API that returns a named section's contents from every loaded image on every object format, with an observer for images loaded later.
 
-The API is prototyped as a library at [swift-sections](https://github.com/OlafAndreas/swift-sections), which is what a library can do from outside the runtime and where it runs out of road: on Mach-O it registers with dyld's add-image callback, and on ELF it has to re-read each image's section headers from disk because the Swift 6.4 toolchain does not emit the `swift5_sections` index SE-0492 describes. Two adopters, [swift-discovery](https://github.com/OlafAndreas/swift-discovery) and [swift-mediator](https://github.com/OlafAndreas/swift-mediator), read through it. The full text is below, and the source lives in the [swift-mediator repository](https://github.com/OlafAndreas/swift-mediator/blob/main/Pitches/section-enumeration.md).
+The API is prototyped as a library at [swift-sections](https://github.com/OlafAndreas/swift-sections), which is what a library can do from outside the runtime and where it runs out of road: on Mach-O it registers with dyld's add-image callback, and on ELF it has to re-read each image's section headers from disk because the Swift 6.4 toolchain does not emit the `swift5_sections` index SE-0492 describes. Two adopters, [swift-discovery](https://github.com/OlafAndreas/swift-discovery) and [swift-mediator](https://github.com/OlafAndreas/swift-mediator), read through it. The full text is below, and the source lives in the [swift-mediator repository](https://github.com/OlafAndreas/swift-mediator/blob/main/Pitches/section-enumeration.md). Context: the [SE-0492 pitch thread](https://forums.swift.org/t/pitch-3-section-placement-control/77435) and its [acceptance](https://forums.swift.org/t/accepted-with-modifications-se-0492-section-placement-control/82701).
 
 I would particularly like to hear from anyone who knows the runtime's image-inspection code whether the `MetadataSections` route for the ELF index is the right handover, and from the Swift Testing maintainers whether `SectionBounds.swift` could really collapse onto this.
 
@@ -11,7 +11,7 @@ I would particularly like to hear from anyone who knows the runtime's image-insp
 * Review Manager: TBD
 * Status: **Pitch**
 * Implementation: library-level prototype of the proposed API at [OlafAndreas/swift-sections](https://github.com/OlafAndreas/swift-sections), consumed by [swift-discovery](https://github.com/OlafAndreas/swift-discovery) and through it by [swift-mediator](https://github.com/OlafAndreas/swift-mediator); compiler and runtime changes not yet started
-* Related: [SE-0492 Section Placement Control](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0492-section-control.md), [SE-0385 Custom Reflection Metadata](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0385-custom-reflection-metadata.md) (returned for revision), Swift Testing's [test content ABI](https://github.com/swiftlang/swift-testing/blob/main/Documentation/ABI/TestContent.md)
+* Related: [SE-0492 Section Placement Control](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0492-section-control.md) ([pitch thread](https://forums.swift.org/t/pitch-3-section-placement-control/77435), [acceptance](https://forums.swift.org/t/accepted-with-modifications-se-0492-section-placement-control/82701)), [SE-0385 Custom Reflection Metadata](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0385-custom-reflection-metadata.md) (returned for revision), Swift Testing's [test content ABI](https://github.com/swiftlang/swift-testing/blob/main/Documentation/ABI/TestContent.md)
 
 ## Introduction
 
@@ -104,7 +104,7 @@ public enum SectionContents {
 }
 ```
 
-`SectionName` takes a `StaticString` so that no allocation happens on the enumeration path, which Swift Testing found necessary on Darwin. The compiler diagnoses a Mach-O name longer than 16 bytes at the `@section` site, which it does not do today; the limit is easy to hit and the failure is a silent empty section.
+`SectionName` takes a `StaticString` so that no allocation happens on the enumeration path, which Swift Testing found necessary on Darwin. The API returns raw bytes and never interprets them. During the SE-0492 review it was noted that Swift struct layout is not guaranteed and that anything placed in a section for discovery needs a stable data format readable by the runtime, libraries and out-of-process tools; that remains each library's responsibility, and keeping the runtime out of the record format is what lets Swift Testing, `swift-discovery` and future adopters each keep their own. The compiler diagnoses a Mach-O name longer than 16 bytes at the `@section` site, which it does not do today; the limit is easy to hit and the failure is a silent empty section.
 
 ### Semantics
 
