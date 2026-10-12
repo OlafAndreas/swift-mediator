@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1500px;height:750px;overflow:hidden;background:#0b1020;font-family:-apple-system,"SF Pro Display","Helvetica Neue",Helvetica,Arial,sans-serif}
+.bg{position:absolute;inset:0;background:radial-gradient(1200px 700px at 20% 30%,#17213f 0%,#0b1020 60%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:50px 50px}
+.bin{position:absolute;left:120px;top:135px;width:1260px;height:480px}
+.band{position:absolute;left:0;right:0;height:62px;border-radius:14px;background:#182440;border:1px solid #243457;display:flex;align-items:center;padding:0 28px;box-sizing:border-box;color:#6b7aa3;font:600 22px "SF Mono",Menlo,monospace;letter-spacing:.5px}
+.band.hot{background:linear-gradient(90deg,#1B8A8F 0%,#3C9D5D 100%);border-color:transparent;color:#fff;box-shadow:0 0 0 6px rgba(27,138,143,.18),0 20px 60px rgba(27,138,143,.35)}
+.rec{position:absolute;top:10px;height:42px;border-radius:10px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:#0f6f73;font:700 18px "SF Mono",Menlo,monospace;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.rec.ghost{background:rgba(255,255,255,.18);color:rgba(255,255,255,.75);border:2px dashed rgba(255,255,255,.55);box-shadow:none}
+.brk{position:absolute;top:-16px;width:40px;height:94px;border:9px solid #6FD0C4;border-radius:12px}
+.brk.l{left:-64px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0}
+.brk.r{right:-64px;border-left:none;border-top-left-radius:0;border-bottom-left-radius:0}
+.title{position:absolute;left:120px;top:40px;color:#F3F4F8;font-size:44px;font-weight:800;letter-spacing:-1px}
+.title span{color:#6FD0C4;font-weight:600}
+.sub{position:absolute;right:120px;top:52px;color:#8e9bc4;font:600 20px -apple-system,Helvetica,Arial,sans-serif;letter-spacing:3px}
+.foot{position:absolute;left:120px;bottom:40px;color:#5d6a92;font:600 20px "SF Mono",Menlo,monospace}
+</style></head><body>
+<div class="bg"></div><div class="grid"></div>
+<div class="title">Swift can finally <span>find your types</span> at startup</div>
+<div class="sub">SE-0492 · @section · @used</div>
+<div class="bin">
+  <div class="band" style="top:0">__TEXT,__text</div>
+  <div class="band" style="top:84px">__DATA_CONST,__swift5_proto</div>
+  <div class="band hot" style="top:168px">__DATA_CONST,__swift5_discov
+    <div class="brk l"></div><div class="brk r"></div>
+    <div class="rec" style="left:470px;width:230px">PlaceOrderHandler</div>
+    <div class="rec" style="left:720px;width:200px">RetryBehavior</div>
+    <div class="rec" style="left:940px;width:170px">AuditHandler</div>
+    <div class="rec ghost" style="left:1130px;width:100px">+ yours</div>
+  </div>
+  <div class="band" style="top:252px">__DATA_CONST,__swift5_types</div>
+  <div class="band" style="top:336px">__DATA,__data</div>
+  <div class="band" style="top:420px;opacity:.6">__LINKEDIT</div>
+</div>
+<div class="foot">for record in section { register(record.type()) }   // no registration code</div>
+</body></html>
