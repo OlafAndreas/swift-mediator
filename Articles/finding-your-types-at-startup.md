@@ -1,5 +1,7 @@
 # Swift can finally find your types at startup. Here is what it cost.
 
+*Published on Medium: https://medium.com/@olaf.ovrum/swift-can-finally-find-your-types-at-startup-here-is-what-it-cost-ad3c67de9803*
+
 *Draft. Target: Medium, about 11 minutes.*
 
 ---

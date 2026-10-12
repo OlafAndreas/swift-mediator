@@ -10,7 +10,7 @@ That last one bothered me enough that I wrote a Swift Evolution pitch. It is my 
 
 The article is the honest version of the week, failures included.
 
-Article: [MEDIUM LINK]
+Article: https://medium.com/@olaf.ovrum/swift-can-finally-find-your-types-at-startup-here-is-what-it-cost-ad3c67de9803
 Pitch: https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011
 Code: https://github.com/OlafAndreas/swift-mediator
 
