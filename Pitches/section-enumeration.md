@@ -4,12 +4,12 @@
 * Authors: Olaf Andreas Øvrum
 * Review Manager: TBD
 * Status: **Pitch**
-* Implementation: library-level reference at [OlafAndreas/swift-discovery](https://github.com/OlafAndreas/swift-discovery), adopted by [OlafAndreas/swift-mediator](https://github.com/OlafAndreas/swift-mediator); compiler and runtime changes not yet started
+* Implementation: library-level prototype of the proposed API at [OlafAndreas/swift-sections](https://github.com/OlafAndreas/swift-sections), consumed by [swift-discovery](https://github.com/OlafAndreas/swift-discovery) and through it by [swift-mediator](https://github.com/OlafAndreas/swift-mediator); compiler and runtime changes not yet started
 * Related: [SE-0492 Section Placement Control](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0492-section-control.md), [SE-0385 Custom Reflection Metadata](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0385-custom-reflection-metadata.md) (returned for revision), Swift Testing's [test content ABI](https://github.com/swiftlang/swift-testing/blob/main/Documentation/ABI/TestContent.md)
 
 ## Introduction
 
-SE-0492 lets a library place a constant global into a named binary section. It deliberately stops there. Its Future Directions list "a unified runtime API for reading section contents across platforms and modules" and "macro-based linker sets and plugin registration" as work still to do, and its ELF design emits a `swift5_sections` index that nothing in the runtime reads yet.
+SE-0492 lets a library place a constant global into a named binary section. It deliberately stops there. Its Future Directions list "a unified runtime API for reading section contents across platforms and modules" and "macro-based linker sets and plugin registration" as work still to do. Its ELF design describes a `swift5_sections` index of custom section bounds; the Swift 6.4 toolchain does not emit it, and nothing in the runtime would read it if it did.
 
 This proposal is that follow-on. It adds one runtime API that returns the contents of a named section in every loaded image, on every object format Swift supports, with notification for images loaded later. Everything a library builds on top, such as test discovery, plugin registries or handler lookup, becomes a loop over records it already knows the layout of:
 
@@ -26,11 +26,11 @@ for records in SectionContents.loaded(sectionName) {
 Since Swift 6.3 the pattern is legal and in use: a macro expands to a `@section` `@used` global whose value is a tuple of integers and C function pointers, and the library reads the section back at startup. Swift Testing does it for `@Test` in `swift5_tests`. The reference implementation for this proposal, `swift-discovery`, does it for a keyed `@Discoverable(Key.self)` attribute that a mediator framework uses to find request handlers. Both had to write the reading half themselves, and the reading half is where the cost is:
 
 - **Mach-O.** Walk `_dyld_image_count`, call `getsectiondata` per image. Swift Testing's implementation notes that this walk is racy against images loading on other threads and prefers Objective-C runtime entry points when available. It also notes that building a `String` inside the walk can recurse into a libobjc lock, so section names must be `StaticString`.
-- **ELF.** Section headers are not mapped at runtime. A library either links a C target that references the linker's `__start_` and `__stop_` symbols, which only cover the one image the C target is linked into, or it relies on the Swift runtime already knowing its section by name. Swift Testing gets the second option because `MetadataSections` gained a `swift5_tests` field in version 4. No other library does.
+- **ELF.** Section headers are not mapped at runtime. A library has three options. It can link a C target that references the linker's `__start_` and `__stop_` symbols, which only cover the one image the C target is linked into. It can enumerate images with `dl_iterate_phdr` and re-read each image's section headers from its file on disk, which is what the reference implementation does and which fails for images whose files are gone. Or it can rely on the Swift runtime already knowing its section by name, which Swift Testing gets because `MetadataSections` gained a `swift5_tests` field in version 4 and no other library does. The linker knew every one of these addresses; the toolchain simply does not record them.
 - **COFF.** Parse the PE headers of every loaded module in memory, find the grouped section, and skip the zero padding that older SwiftRT emitted. Swift Testing's walker still carries a `FIXME` for long section names.
 - **Wasm and static linking.** Start and stop symbols, under a different spelling per format.
 
-For `swift-discovery` the reading half is about fifty lines of unsafe Swift and C across a C target and two `#if` branches, and it covers only two of the four object formats. The number is small; the problem is that it is wrong in the same ways in every library that writes it: it misses images loaded after startup, it misses other images on ELF entirely, it has no Windows path until someone ports Swift Testing's, and it is racy on Darwin unless the author knows which private entry points to prefer. The Swift runtime already solves every one of those problems for its own sections. It just does not share the solution.
+The reference implementation, `swift-sections`, is the reading half done as well as a library can do it: about two hundred lines of Swift and C. On Mach-O it registers with dyld's add-image callback, the same registration the runtime uses, so every image is seen, later images are observed, and there is no racy walk. On ELF it opens and parses every loaded image's file to recover addresses the linker had at link time. It has no Windows path until someone ports Swift Testing's. Every library that wants discovery either depends on something like it or rewrites a worse version. The Swift runtime already solves every one of those problems for its own sections. It just does not share the solution.
 
 ### The section a library can borrow today, and why that is not enough
 
@@ -72,7 +72,7 @@ let token = SectionContents.observe(handlerSection) { records in
 }
 ```
 
-The macro, the C target, the `#if` walker and the `rescan()` escape hatch in `swift-discovery` are deleted. Swift Testing's `SectionBounds.swift` becomes a few lines.
+`swift-sections` is deleted outright; its API is the proposal. `swift-discovery`, which already reads through it, changes one import. Swift Testing's `SectionBounds.swift` becomes a few lines.
 
 ## Detailed design
 
@@ -113,7 +113,7 @@ public enum SectionContents {
 The runtime already tracks every loaded image for its own metadata sections and receives a callback per image on Mach-O (dyld), ELF and COFF (`swift_addNewDSOImage` from `swiftrt.o`) and Wasm. This proposal extends that machinery to custom sections:
 
 - **Mach-O.** Image enumeration goes through the runtime's existing dyld registration rather than a fresh `_dyld_image_count` walk, which closes the race Swift Testing documents. Section lookup is `getsectiondata` on the recorded header.
-- **ELF.** SE-0492's compiler already emits a `swift5_sections` index per image listing custom section names with their start and stop addresses. `swiftrt.o` passes the index to the runtime in a new `MetadataSections` field. This is the step SE-0492 explicitly left for later, and it is the only way for a library to see custom sections in images other than its own on ELF.
+- **ELF.** The compiler emits the `swift5_sections` index SE-0492 specified, one entry per custom section with name, start and stop, in every object that places something in a custom section. `swiftrt.o` passes the index to the runtime in a new `MetadataSections` field. This is the step SE-0492 explicitly left for later, and it replaces the file re-read that is the only generic option today.
 - **COFF.** The runtime walks the module's in-memory PE section headers for the grouped section, as Swift Testing does, once, for every library.
 - **Wasm and static linking.** Start and stop symbols, resolved by the runtime from the same index.
 
@@ -151,9 +151,9 @@ Discussed under Motivation. It needs this API underneath it, cannot be applied b
 
 SE-0385 attaches runtime-constructed attribute instances to types, functions and properties. Its open questions were about evaluation and breadth, not about reading sections, and its implementation would also need this API. The two are complementary.
 
-### `dl_iterate_phdr` on ELF
+### `dl_iterate_phdr` plus the image file on ELF
 
-Program headers are mapped; section headers are not. Custom sections have no program header of their own, so this cannot find them. It is why SE-0492 emits the index in the first place.
+Program headers are mapped; section headers are not, so `dl_iterate_phdr` alone cannot find a custom section. The reference implementation combines it with re-reading each image's section headers from disk. That works for the common case and is what this proposal's ELF path would replace: it fails for images whose files were deleted or replaced after loading, it does file I/O on a path that should be a table lookup, and it recovers at runtime information the linker discarded. It is the strongest evidence that the index belongs in the toolchain.
 
 ### Build-time code generation
 
@@ -168,4 +168,4 @@ A SwiftPM plugin cannot see other modules, breaks under conditional compilation,
 
 ## Acknowledgements
 
-SE-0492 made the writing half possible and named the reading half as the next step. Swift Testing's `SectionBounds.swift` and its test content ABI document showed, in production code, exactly what the reading half costs on each platform and what a shared section looks like when one package has to own it. The `swift-discovery` and `swift-mediator` packages were built to measure the same costs from outside the toolchain.
+SE-0492 made the writing half possible and named the reading half as the next step. Swift Testing's `SectionBounds.swift` and its test content ABI document showed, in production code, exactly what the reading half costs on each platform and what a shared section looks like when one package has to own it. The `swift-sections`, `swift-discovery` and `swift-mediator` packages were built to measure the same costs from outside the toolchain and to prototype the API surface proposed here.
