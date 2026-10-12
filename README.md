@@ -69,6 +69,11 @@ Run `swift run Example`, `swift run --traits Factory OrderExample` or
 `swift run --traits Vapor VaporExample` to see it working, and `swift test --enable-all-traits`
 for the suites.
 
+## Pitch
+
+Discovery relies on reading binary sections back at runtime, which SE-0492 left to libraries.
+The follow-on proposal is being pitched at [forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011](https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

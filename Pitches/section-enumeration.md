@@ -3,7 +3,7 @@
 * Proposal: SE-NNNN
 * Authors: Olaf Andreas Øvrum
 * Review Manager: TBD
-* Status: **Pitch**
+* Status: **Pitch** ([forum thread](https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011))
 * Implementation: library-level prototype of the proposed API at [OlafAndreas/swift-sections](https://github.com/OlafAndreas/swift-sections), consumed by [swift-discovery](https://github.com/OlafAndreas/swift-discovery) and through it by [swift-mediator](https://github.com/OlafAndreas/swift-mediator); compiler and runtime changes not yet started
 * Related: [SE-0492 Section Placement Control](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0492-section-control.md) ([pitch thread](https://forums.swift.org/t/pitch-3-section-placement-control/77435), [acceptance](https://forums.swift.org/t/accepted-with-modifications-se-0492-section-placement-control/82701)), [SE-0385 Custom Reflection Metadata](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0385-custom-reflection-metadata.md) (returned for revision), Swift Testing's [test content ABI](https://github.com/swiftlang/swift-testing/blob/main/Documentation/ABI/TestContent.md)
 
