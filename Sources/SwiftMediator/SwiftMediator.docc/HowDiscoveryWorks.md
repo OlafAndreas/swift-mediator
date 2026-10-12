@@ -29,15 +29,14 @@ module never imports SwiftDiscovery.
 `Discoverable.types(for:)` walks every loaded image once, on first use, and caches the
 result per key. ``Mediator/discoveredTypes(_:)`` is the mediator's view of it.
 
-- On Mach-O, `getsectiondata` reads the section from each image.
-- On ELF (Linux, Android, FreeBSD), a small C shim exposes the linker's weak
-  `__start_swift5_discov` and `__stop_swift5_discov` symbols, which bound the section in the
-  image the shim is linked into. For statically linked SwiftPM products that is the
-  executable.
+- Section reading comes from [swift-sections](https://github.com/OlafAndreas/swift-sections).
+  On Mach-O it registers with dyld, so every image is seen, including ones loaded later.
+  On ELF (Linux, Android, FreeBSD) it enumerates images with `dl_iterate_phdr` and re-reads
+  each image's section headers from disk, because ELF does not map them.
 - Windows PE is not implemented; register explicitly there.
 
 Results are deduplicated and sorted by qualified name, so registration order is stable.
-Images loaded after the first scan are not seen; `Discoverable.rescan()` exists for that case.
+The index is built once; images loaded after that show up in `Discoverable.rescan()`.
 
 Each recovered type is cast to `any RequestHandler.Type`, `any EventHandler.Type` or
 `any PipelineBehavior.Type`. The cast opens the existential into a generic registration
