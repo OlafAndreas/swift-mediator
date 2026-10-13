@@ -4,6 +4,8 @@ The API is prototyped as a library at [swift-sections](https://github.com/OlafAn
 
 I would particularly like to hear from anyone who knows the runtime's image-inspection code whether the `MetadataSections` route for the ELF index is the right handover, and from the Swift Testing maintainers whether `SectionBounds.swift` could really collapse onto this.
 
+*Edited 2026-10-13: corrected the description of Swift Testing's Mach-O discovery and of the `swift5_tests` section after [post 4](https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011/4). The design is unchanged.*
+
 ---
 
 * Proposal: SE-NNNN
@@ -31,16 +33,16 @@ for records in SectionContents.loaded(sectionName) {
 
 Since Swift 6.3 the pattern is legal and in use: a macro expands to a `@section` `@used` global whose value is a tuple of integers and C function pointers, and the library reads the section back at startup. Swift Testing does it for `@Test` in `swift5_tests`. The reference implementation for this proposal, `swift-discovery`, does it for a keyed `@Discoverable(Key.self)` attribute that a mediator framework uses to find request handlers. Both had to write the reading half themselves, and the reading half is where the cost is:
 
-- **Mach-O.** Walk `_dyld_image_count`, call `getsectiondata` per image. Swift Testing's implementation notes that this walk is racy against images loading on other threads and prefers Objective-C runtime entry points when available. It also notes that building a `String` inside the walk can recurse into a libobjc lock, so section names must be `StaticString`.
+- **Mach-O.** Enumerate the loaded images and call `getsectiondata` on each header. Swift Testing asks the Objective-C runtime for the loaded image headers, or failing that for the image names followed by a `dlopen` with `RTLD_NOLOAD` per image, and only falls back to a `_dyld_image_count` walk when neither is available, noting that the walk is racy against images loading on other threads. It also notes that building a `String` on this path can recurse into a libobjc lock, so section names must be `StaticString`.
 - **ELF.** Section headers are not mapped at runtime. A library has three options. It can link a C target that references the linker's `__start_` and `__stop_` symbols, which only cover the one image the C target is linked into. It can enumerate images with `dl_iterate_phdr` and re-read each image's section headers from its file on disk, which is what the reference implementation does and which fails for images whose files are gone. Or it can rely on the Swift runtime already knowing its section by name, which Swift Testing gets because `MetadataSections` gained a `swift5_tests` field in version 4 and no other library does. The linker knew every one of these addresses; the toolchain simply does not record them.
 - **COFF.** Parse the PE headers of every loaded module in memory, find the grouped section, and skip the zero padding that older SwiftRT emitted. Swift Testing's walker still carries a `FIXME` for long section names.
 - **Wasm and static linking.** Start and stop symbols, under a different spelling per format.
 
 The reference implementation, `swift-sections`, is the reading half done as well as a library can do it: about two hundred lines of Swift and C. On Mach-O it registers with dyld's add-image callback, the same registration the runtime uses, so every image is seen, later images are observed, and there is no racy walk. On ELF it opens and parses every loaded image's file to recover addresses the linker had at link time. It has no Windows path until someone ports Swift Testing's. Every library that wants discovery either depends on something like it or rewrites a worse version. The Swift runtime already solves every one of those problems for its own sections. It just does not share the solution.
 
-### The section a library can borrow today, and why that is not enough
+### The one custom section the runtime knows by name
 
-Swift Testing's test content ABI permits third-party records in `swift5_tests` under a `kind` value reserved by opening an issue against Swift Testing. Because the runtime enumerates that section, a library that adopts it gets ELF and COFF support without writing a walker. That is the strongest argument that the demand is real, and it is also a sign that the solution is in the wrong place. One package owns the section, assigns kinds by hand, fixes a record shape designed for tests, and cannot change it without breaking everyone who borrowed it. A runtime API that enumerates any named section makes the borrowing unnecessary and lets Swift Testing own its own section again.
+`swift5_tests` is the only non-runtime section that `MetadataSections` carries, which is why Swift Testing has ELF support without a walker. Its test content ABI lets other testing libraries host test content there under reserved `kind` values, and its maintainers have stated that this is the purpose of the `kind` field and that non-test data would not be accepted. That is the right boundary for a test section to draw. It also means every other library that places records in a custom section is on its own on ELF, which is the gap this proposal is about.
 
 ### Why not go straight to a typed attribute
 
@@ -78,7 +80,7 @@ let token = SectionContents.observe(handlerSection) { records in
 }
 ```
 
-`swift-sections` is deleted outright; its API is the proposal. `swift-discovery`, which already reads through it, changes one import. Swift Testing's `SectionBounds.swift` becomes a few lines.
+`swift-sections` is deleted outright; its API is the proposal. `swift-discovery`, which already reads through it, changes one import. Swift Testing's maintainers have said they cannot adopt new runtime API on Apple platforms without back-deployment, but would adopt the ELF path readily if the index were emitted.
 
 ## Detailed design
 
@@ -137,17 +139,17 @@ Additive. One new field in `MetadataSections` behind a version bump on ELF and C
 
 The API is availability-gated on platforms with an OS-shipped runtime. On Darwin the enumeration half can be `@_alwaysEmitIntoClient` over `getsectiondata`, so a library can use the new API against older OS versions with no behavior change; only `observe` needs the shipped runtime. On Linux and Windows the toolchain ships the runtime, so availability follows the toolchain.
 
-Libraries using `@section` today migrate by replacing their walker with `loaded` and, if they want late images, `observe`. Record layouts are untouched. Swift Testing can migrate `SectionBounds.swift` without changing its test content ABI.
+Libraries using `@section` today migrate by replacing their walker with `loaded` and, if they want late images, `observe`. Record layouts are untouched. Swift Testing's own walker stays in place on Apple platforms because of its back-deployment constraints; on ELF it would read the index.
 
 ## Alternatives considered
 
 ### Keep writing the walker
 
-This works for Darwin and for the main image on ELF, and the cost per library is small. The gaps are structural: no other images on ELF, no Windows until ported, late images missed, and a race on Darwin that only the toolchain's own library knew to avoid. The runtime closes all four for its own sections already.
+This works for Darwin and for the main image on ELF, and the cost per library is small. The gaps are structural: no other images on ELF, no Windows until ported, late images missed, and a race on Darwin unless the Objective-C runtime is asked for the image list instead. The runtime closes all four for its own sections already.
 
 ### Reserve a `kind` in `swift5_tests`
 
-Available today and cross-platform, because the runtime enumerates that section. Rejected as the long-term answer because it makes one package the registrar for every discovery mechanism in the ecosystem, fixes a test-shaped record, and gives that package no way to evolve its own section. It is the right stopgap until this API ships, and it is evidence that the API is wanted.
+Not available. Swift Testing's maintainers have stated that `kind` values exist to host other testing libraries' test content and that a proposal to place non-test data in `swift5_tests` would not be accepted. Listed because it is the obvious question.
 
 ### A typed `@discoverable(Key.self)` attribute first
 
@@ -174,4 +176,4 @@ A SwiftPM plugin cannot see other modules, breaks under conditional compilation,
 
 ## Acknowledgements
 
-SE-0492 made the writing half possible and named the reading half as the next step. Swift Testing's `SectionBounds.swift` and its test content ABI document showed, in production code, exactly what the reading half costs on each platform and what a shared section looks like when one package has to own it. The `swift-sections`, `swift-discovery` and `swift-mediator` packages were built to measure the same costs from outside the toolchain and to prototype the API surface proposed here.
+SE-0492 made the writing half possible and named the reading half as the next step. Swift Testing's `SectionBounds.swift` and its test content ABI document showed, in production code, exactly what the reading half costs on each platform. The `swift-sections`, `swift-discovery` and `swift-mediator` packages were built to measure the same costs from outside the toolchain and to prototype the API surface proposed here.
