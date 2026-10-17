@@ -18,11 +18,39 @@ public struct DiscoverableMacro: PeerMacro, MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         let placement = try DiscoveryRecordSyntax.placement(of: node, on: declaration, in: context)
-        return DiscoveryRecordSyntax.declarations(
+        var declarations = DiscoveryRecordSyntax.declarations(
             recording: placement,
             under: ["SwiftMediator.MediatorComponents"],
             identifierPrefix: "__mediator_record_"
         )
+        if let request = LinkTimeSymbol.requestArgument(of: node) {
+            guard !placement.storage.contains("static") else {
+                throw DiagnosticsError(diagnostics: [
+                    Diagnostic(node: Syntax(node), message: Message.nestedHandlerWithRequest)
+                ])
+            }
+            // One strong symbol per request. A second handler for the same request in this module
+            // is a compile-time "multiple definitions of symbol" error; one in another module of the
+            // same image is a duplicate-symbol error at link time. The function must not be private:
+            // the compiler emits no C entry point for private `@_cdecl` functions.
+            let symbol = LinkTimeSymbol.symbol(forRequestSpelled: request)
+            declarations.append(
+                """
+                @_cdecl(\(literal: symbol)) @used func __mediator_handler_for_\(raw: placement.typeName)() {
+                }
+                """
+            )
+        }
+        return declarations
+    }
+
+    enum Message: DiagnosticMessage {
+        case nestedHandlerWithRequest
+        var message: String {
+            "@Handler(for:) requires a handler declared at file scope; the link-time symbol cannot be a member"
+        }
+        var diagnosticID: MessageID { MessageID(domain: "SwiftMediatorMacros", id: "\(self)") }
+        var severity: DiagnosticSeverity { .error }
     }
 
     // MARK: Member — init(resolver:)
