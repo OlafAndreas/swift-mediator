@@ -6,7 +6,7 @@
 * Status: **Pitch**
 * Implementation: Part I: [swiftlang/swift#93419](https://github.com/swiftlang/swift/pull/93419) (draft, includes the fix in [swiftlang/swift#93410](https://github.com/swiftlang/swift/pull/93410)), consumer: [swift-discovery](https://github.com/OlafAndreas/swift-discovery/tree/olaf/stdlib-sections). Part II: not implemented; an implementer is sought.
 * Previous Proposal: [SE-0385 Custom Reflection Metadata](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0385-custom-reflection-metadata.md) (returned for revision)
-* Review: [first pitch](https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011), [second pitch](TBD)
+* Review: [first pitch](https://forums.swift.org/t/pitch-runtime-enumeration-of-custom-sections/90011), [second pitch](https://forums.swift.org/t/pitch-custom-metadata-attributes-for-types-and-runtime-access-to-custom-sections/90136)
 * Related: [SE-0492 Section Placement Control](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0492-section-control.md)
 
 ## Summary of changes
