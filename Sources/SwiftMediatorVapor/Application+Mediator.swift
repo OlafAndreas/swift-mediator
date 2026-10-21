@@ -34,16 +34,12 @@ public extension Application {
     var mediator: Mediator {
         get {
             if let existing = storage[MediatorKey.self] { return existing }
-            do {
-                let steps = mediatorConfigurators
-                let mediator = try Mediator(resolver: resolver, discovery: mediatorDiscovery) { config in
-                    for step in steps { step(&config) }
-                }
-                storage[MediatorKey.self] = mediator
-                return mediator
-            } catch {
-                fatalError("SwiftMediator configuration error: \(error)")
+            let steps = mediatorConfigurators
+            let mediator = Mediator.failFast(resolver: resolver, discovery: mediatorDiscovery) { config in
+                for step in steps { step(&config) }
             }
+            storage[MediatorKey.self] = mediator
+            return mediator
         }
         set { storage[MediatorKey.self] = newValue }
     }

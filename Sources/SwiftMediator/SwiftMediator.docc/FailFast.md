@@ -21,7 +21,15 @@ test failures rather than production incidents.
 
 ## Non-throwing contexts
 
-Factory closures and `app.mediator` cannot throw. The Factory binding's `Mediator.failFast`
-and the Vapor binding's lazy `app.mediator` turn a construction error into a `fatalError`
-with the message, on first resolution. A mediator with a broken registry never reaches a
-request.
+A `static let`, a Factory closure and `app.mediator` cannot throw. `Mediator.failFast`
+builds the mediator like `init` and turns a construction error into a `fatalError` with the
+message:
+
+```swift
+extension Mediator {
+    static let shared = Mediator.failFast()
+}
+```
+
+The Factory binding's `Container.mediator` and the Vapor binding's lazy `app.mediator` use it
+on first resolution. A mediator with a broken registry never reaches a request.

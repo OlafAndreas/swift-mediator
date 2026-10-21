@@ -94,4 +94,15 @@ import Testing
         let mediator = try Mediator(resolver: SimpleResolver(), discovery: .thisModule())   // nothing registered
         await #expect(throws: ResolverError.self) { _ = try await mediator.send(Ping(text: "x")) }
     }
+
+    @Test func errorsReadTheSameThroughLocalizedDescription() throws {
+        let errors: [any Error & CustomStringConvertible] = [
+            MediatorError.noHandler(request: Unhandled.self),
+            MediatorError.conflictingHandlers(request: Echo.self, handlers: [EchoHandler.self, SecondEchoHandler.self]),
+            ResolverError.unregistered(Greeting.self),
+        ]
+        for error in errors {
+            #expect(error.localizedDescription == error.description)
+        }
+    }
 }

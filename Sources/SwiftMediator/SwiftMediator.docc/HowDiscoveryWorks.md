@@ -61,4 +61,7 @@ try Mediator(discovery: .none) { $0.register(OnlyThis.self) }
 - A handler in a library that is not linked into the final binary is not discovered.
   Discovery sees what is loaded, not what is in the source tree. A static-archive member
   that nothing references is never linked, and its record goes with it.
-- Dead stripping keeps the records because they are marked `@used`.
+- Dead stripping and `strip` keep the records, because they are marked `@used` and are read
+  from their section rather than looked up by symbol. Verified on macOS (release build,
+  stripped, Swift 6.4) and on Linux x86_64 and aarch64 (`--static-swift-stdlib`, stripped,
+  Swift 6.3.3).

@@ -53,6 +53,10 @@ public enum ResolverError: Error, CustomStringConvertible {
     }
 }
 
+extension ResolverError: LocalizedError {
+    public var errorDescription: String? { description }
+}
+
 /// How long an instance produced by `SimpleResolver` lives.
 public enum Lifetime: Sendable {
     /// A new instance on every resolve.

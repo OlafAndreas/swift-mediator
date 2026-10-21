@@ -1,3 +1,4 @@
+import Foundation
 import SwiftDiscovery
 public enum MediatorError: Error, CustomStringConvertible {
     /// `send` was called for a request with no registered handler.
@@ -17,6 +18,10 @@ public enum MediatorError: Error, CustomStringConvertible {
             "\(type) is marked @Handler/@Behavior but conforms to none of RequestHandler, EventHandler, PipelineBehavior"
         }
     }
+}
+
+extension MediatorError: LocalizedError {
+    public var errorDescription: String? { description }
 }
 
 /// Dispatches requests to their single handler through a pipeline of behaviors, and
@@ -209,6 +214,31 @@ public final class Mediator: Sendable {
         try self.init(resolver: resolver, discovery: discovery ? .all : .none, configure: configure)
     }
 
+    /// Same as `init`, but terminates the process on a configuration error instead of
+    /// throwing. For a mediator kept for the whole process, and for Factory closures and
+    /// other non-throwing composition roots:
+    ///
+    ///     static let shared = Mediator.failFast()
+    public static func failFast(
+        resolver: any Resolver = SimpleResolver.shared,
+        discovery: Discovery = .all,
+        configure: (inout Configuration) -> Void = { _ in }
+    ) -> Mediator {
+        do {
+            return try Mediator(resolver: resolver, discovery: discovery, configure: configure)
+        } catch {
+            fatalError("SwiftMediator configuration error: \(error)")
+        }
+    }
+
+    public static func failFast(
+        resolver: any Resolver = SimpleResolver.shared,
+        discovery: Bool,
+        configure: (inout Configuration) -> Void = { _ in }
+    ) -> Mediator {
+        failFast(resolver: resolver, discovery: discovery ? .all : .none, configure: configure)
+    }
+
     /// A view of `parent` that resolves through `scope`. Handed to handlers that inject
     /// `Mediator`, so nested `send` / `publish` calls share the outer call's scope.
     private init(parent: Mediator, scope: any Resolver) {
@@ -260,6 +290,22 @@ public final class Mediator: Sendable {
         }
     }
 
+    /// Sends `request` with registrations that only this call sees. Lookups check them
+    /// first and fall back to this mediator's resolver. Use it for values the resolver
+    /// cannot build synchronously: await them first, then hand them in.
+    ///
+    ///     let session = try await sessions.current()
+    ///     let orders = try await mediator.send(ListOrders()) {
+    ///         $0.register(Session.self, instance: session)
+    ///     }
+    ///
+    /// A `.singleton` registered here lives for this call.
+    public func send<R: Request>(_ request: R, with register: (SimpleResolver) -> Void) async throws -> R.Response {
+        let own = SimpleResolver()
+        register(own)
+        return try await bound(to: Overlay(own: own, base: resolver)).send(request)
+    }
+
     /// Publishes an event to every handler whose `Note` type matches, in registration order.
     /// Handlers run sequentially inside one scope; the first error stops the sequence and is rethrown.
     public func publish<E: Event>(_ event: E) async throws {
@@ -301,6 +347,27 @@ struct MediatorScope: Resolver {
 
     func withScope<T: Sendable>(_ body: @Sendable (any Resolver) async throws -> T) async throws -> T {
         try await inner.withScope { try await body(MediatorScope(inner: $0, mediator: mediator)) }
+    }
+}
+
+/// Per-call registrations over a mediator's resolver. Answers from `own` first and
+/// delegates everything else to `base`, so the base resolver's scopes still apply. Inside a
+/// scope, `own`'s `.scoped` registrations are shared for the duration of that scope.
+struct Overlay: Resolver {
+    let own: SimpleResolver
+    let base: any Resolver
+    var scope: SimpleResolver.Scope? = nil
+
+    func resolve<T>(_ type: T.Type) throws -> T {
+        guard own.registration(for: type) != nil else { return try base.resolve(type) }
+        return try own.resolve(type, scope: scope, via: self)
+    }
+
+    func withScope<T: Sendable>(_ body: @Sendable (any Resolver) async throws -> T) async throws -> T {
+        if scope != nil { return try await body(self) }      // nested: reuse, like SimpleResolver.Scope
+        return try await base.withScope {
+            try await body(Overlay(own: own, base: $0, scope: SimpleResolver.Scope(root: own)))
+        }
     }
 }
 

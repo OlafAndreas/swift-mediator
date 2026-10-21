@@ -26,28 +26,4 @@ public extension Container {
     }
 }
 
-public extension Mediator {
-    /// Same as `init`, but terminates the process on a configuration error instead of
-    /// throwing. For use inside Factory closures and other non-throwing composition roots.
-    static func failFast(
-        resolver: any Resolver,
-        discovery: Discovery = .all,
-        configure: (inout Configuration) -> Void = { _ in }
-    ) -> Mediator {
-        do {
-            return try Mediator(resolver: resolver, discovery: discovery, configure: configure)
-        } catch {
-            fatalError("SwiftMediator configuration error: \(error)")
-        }
-    }
-
-    static func failFast(
-        resolver: any Resolver,
-        discovery: Bool,
-        configure: (inout Configuration) -> Void = { _ in }
-    ) -> Mediator {
-        failFast(resolver: resolver, discovery: discovery ? .all : .none, configure: configure)
-    }
-}
-
 #endif

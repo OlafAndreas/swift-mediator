@@ -82,3 +82,37 @@ A ``SimpleResolver`` may have a parent. Lookups check the child first and fall b
 chain; registrations never flow upward. Singletons belong to the resolver they are registered
 on, so a child sees the parent's instance. See <doc:Environments> for named layers, and
 <doc:ScopesAndLifetimes> for what a `send` does with this.
+
+## Async dependencies
+
+``Resolver`` factories are synchronous, and so is `init(resolver:)`. A dependency that only
+exists after an `await` cannot be a factory. There are two ways to provide one.
+
+Register the actor that owns it, and await inside `handle`:
+
+```swift
+resolver.register(SessionStore.self, lifetime: .singleton) { _ in SessionStore() }
+
+@Handler
+struct ListOrdersHandler: RequestHandler {
+    let sessions: SessionStore
+    func handle(_ request: ListOrders) async throws -> [Order] {
+        let session = try await sessions.current()
+        ...
+    }
+}
+```
+
+Or await at the call site and pass the value with ``Mediator/send(_:with:)``. Those
+registrations are visible to this call only, including nested `send` and `publish` calls
+from its handlers. Everything else resolves through the mediator's own resolver and scopes:
+
+```swift
+let session = try await sessions.current()
+let orders = try await mediator.send(ListOrders()) {
+    $0.register(Session.self, instance: session)
+}
+```
+
+The first keeps handlers in charge of their dependencies. The second suits a value the
+caller already holds, such as a client for the account the caller is serving.
