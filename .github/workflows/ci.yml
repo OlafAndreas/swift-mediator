@@ -22,6 +22,12 @@ jobs:
       - run: swift test
       - name: Dependencies fetched
         run: ls .build/checkouts
+      # Proves `traits: []` builds the core and the testing product without compiling swift-syntax.
+      - name: Without macros
+        run: |
+          rm -rf .build
+          swift build --disable-default-traits --target SwiftMediatorTesting -v 2>&1 | tee build.log | tail -1
+          ! grep -E -- "-module-name (SwiftSyntax|SwiftParser|SwiftMediatorMacros)( |$)" build.log
 
   all-linux:
     name: All traits (Linux)
