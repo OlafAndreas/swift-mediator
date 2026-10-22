@@ -16,8 +16,12 @@ The core has no runtime dependencies. Bindings for Factory, Vapor and Fluent liv
 package traits, so a consumer who does not enable them never fetches those packages:
 
 ```swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.1.0", traits: ["Vapor", "Fluent"])
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0", traits: [.defaults, "Vapor", "Fluent"])
 ```
+
+`@Handler` and `@Behavior` sit behind the default `Macros` trait. Listing traits replaces the
+defaults, which is why `.defaults` is listed above. See <doc:GettingStarted#Without-macros>
+for building without them.
 
 Swift 6.3 or later is required for the `@section` and `@used` attributes the macro emits; Swift 6.2 does not have them.
 
@@ -73,6 +77,27 @@ SimpleResolver.shared.register(PaymentGateway.self) { _ in PaymentGateway() }
 
 let mediator = try Mediator()                  // scans the binary; throws on misconfiguration
 let confirmation = try await mediator.send(PlaceOrder(customerEmail: "olaf@example.com", lines: lines))
+```
+
+## Without macros
+
+`traits: []` builds the core without swift-syntax. That saves minutes where SwiftPM has no
+prebuilt swift-syntax, such as Linux with Swift 6.3:
+
+```swift
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0", traits: [])
+```
+
+Handlers then write their own `init(resolver:)` and are registered explicitly:
+
+```swift
+struct GetOrderHandler: RequestHandler {
+    let repository: OrderRepository
+    init(resolver: any Resolver) throws { repository = try resolver() }
+    func handle(_ request: GetOrder) async throws -> Order? { await repository.order(id: request.id) }
+}
+
+let mediator = try Mediator(discovery: false) { $0.register(GetOrderHandler.self) }
 ```
 
 ## Where to go next

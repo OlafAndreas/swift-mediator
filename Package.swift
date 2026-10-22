@@ -22,6 +22,8 @@ let package = Package(
         .executable(name: "Benchmarks", targets: ["Benchmarks"]),
     ],
     traits: [
+        .default(enabledTraits: ["Macros"]),
+        .trait(name: "Macros", description: "Enables @Handler and @Behavior. Off with `traits: []`, which builds without swift-syntax."),
         .trait(name: "Factory", description: "Enables SwiftMediatorFactory and fetches hmlongco/Factory."),
         .trait(name: "Vapor", description: "Enables SwiftMediatorVapor and fetches vapor/vapor."),
         .trait(name: "Fluent", description: "Enables SwiftMediatorFluent and fetches vapor/fluent. Implies Vapor.", enabledTraits: ["Vapor"]),
@@ -29,7 +31,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"605.0.0"),
         // Keyed type discovery over SE-0492 section records.
-        .package(url: "https://github.com/OlafAndreas/swift-discovery.git", from: "0.2.0"),
+        .package(url: "https://github.com/OlafAndreas/swift-discovery.git", from: "0.3.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.4.0"),
         // Fetched only when a target depends on them under an enabled trait.
         .package(url: "https://github.com/hmlongco/Factory.git", from: "3.4.0"),
@@ -38,12 +40,12 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.9.0"),
     ],
     targets: [
-        // Core: protocols, Mediator, Resolver seam, macro declarations. Discovery comes from SwiftDiscovery.
+        // Core: protocols, Mediator, Resolver seam, macro declarations. Discovery comes from SwiftDiscoveryCore.
         .target(
             name: "SwiftMediator",
             dependencies: [
-                "SwiftMediatorMacros",
-                .product(name: "SwiftDiscovery", package: "swift-discovery"),
+                .target(name: "SwiftMediatorMacros", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftDiscoveryCore", package: "swift-discovery"),
             ]
         ),
         // Testing support: per-test SimpleResolver.shared, event/request recorders.

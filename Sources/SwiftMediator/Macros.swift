@@ -1,3 +1,4 @@
+#if Macros
 /// Marks a `RequestHandler` or `EventHandler` for automatic discovery.
 ///
 /// Expands to:
@@ -14,3 +15,4 @@ public macro Handler() = #externalMacro(module: "SwiftMediatorMacros", type: "Di
 @attached(peer, names: prefixed(__mediator_record_))
 @attached(member, names: named(init(resolver:)))
 public macro Behavior() = #externalMacro(module: "SwiftMediatorMacros", type: "DiscoverableMacro")
+#endif

@@ -1,4 +1,4 @@
-@_exported import SwiftDiscovery
+@_exported import SwiftDiscoveryCore
 
 /// The discovery key under which ``Handler()`` and ``Behavior()`` record their types.
 ///

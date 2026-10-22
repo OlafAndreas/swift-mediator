@@ -26,7 +26,8 @@ discovered from the binary, so there is nothing to register.
 ```
 
 Swift 6.3 or later, macOS, iOS and Linux. Optional bindings are package traits and cost
-nothing unless enabled: `traits: ["Factory"]`, `["Vapor"]`, `["Fluent"]`.
+nothing unless enabled: `traits: [.defaults, "Factory"]`, `"Vapor"`, `"Fluent"`. The macros
+are the default `Macros` trait; `traits: []` builds without them and without swift-syntax.
 
 ## Use
 

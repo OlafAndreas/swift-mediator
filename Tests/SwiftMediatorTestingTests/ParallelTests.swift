@@ -1,6 +1,6 @@
 import Testing
 import SwiftMediator
-import SwiftDiscovery
+import SwiftDiscoveryCore
 @testable import SwiftMediatorTesting
 
 struct Say: Request { typealias Response = String }

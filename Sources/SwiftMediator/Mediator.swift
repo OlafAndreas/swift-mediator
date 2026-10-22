@@ -1,5 +1,5 @@
 import Foundation
-import SwiftDiscovery
+import SwiftDiscoveryCore
 public enum MediatorError: Error, CustomStringConvertible {
     /// `send` was called for a request with no registered handler.
     case noHandler(request: Any.Type)
