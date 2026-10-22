@@ -6,7 +6,7 @@ Add the package, define a request, write a handler, send.
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.1.0")
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0")
 
 // In a target
 .product(name: "SwiftMediator", package: "swift-mediator")

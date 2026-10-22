@@ -19,7 +19,7 @@ discovered from the binary, so there is nothing to register.
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.1.0"),
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0"),
 
 // target dependencies
 .product(name: "SwiftMediator", package: "swift-mediator"),
