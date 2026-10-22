@@ -1,5 +1,5 @@
 {
-  "originHash" : "6737add0d394c4f069531e1bbd678c8f2282dbd5d8f6a3db71fbe9df08e0b31c",
+  "originHash" : "8d5e73c18bf7d27f130b584d99d34a77c91d07123eb99a4a3cf8893e00d5d6dd",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -186,8 +186,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/OlafAndreas/swift-discovery.git",
       "state" : {
-        "revision" : "a6c22c04d2927345bc6601c64f997f52989c33f4",
-        "version" : "0.2.0"
+        "revision" : "7091dc7c524d70db8b272b9be49281d306a46015",
+        "version" : "0.3.0"
       }
     },
     {
