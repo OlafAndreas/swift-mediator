@@ -82,7 +82,7 @@ This is enough for a library that is willing to design a record format and keep 
 
 ### Part II: a typed attribute for types
 
-A library declares a key. The key is a type marked with a new built-in attribute, and it becomes usable as a custom attribute. Its only role is identity: it takes no arguments in this version. The names `@customMetadata`, `CustomMetadata` and `customSectionContents` are placeholders. Modelled on a linter's rule registry:
+A library declares a key. The key is a type marked with a new built-in attribute, and it becomes usable as a custom attribute. Its only role is identity: it takes no arguments in this version. The names `@customMetadata`, `customMetadataTypes` and `customSectionContents` are placeholders. Modelled on a linter's rule registry:
 
 ```swift
 // In the linter's core module
@@ -103,7 +103,7 @@ struct ArrayInitRule: Rule { ... }
 The linter asks the runtime for the types, and the generated 254-entry list is gone:
 
 ```swift
-for case let ruleType as any Rule.Type in CustomMetadata.types(marked: LintRule.self) {
+for case let ruleType as any Rule.Type in customMetadataTypes(marked: LintRule.self) {
     registry.register(ruleType)
 }
 ```
@@ -112,7 +112,7 @@ Everything the linter knows about a rule beyond its existence, its identifier, w
 
 The compiler emits one constant record per application, holding references to the type's and the key's context descriptors. The runtime owns the record layout and the section name on every object format, keeps records alive, and returns resolved metatypes on request. Nothing runs at load time. The query is Part I's enumeration over a section the runtime names, followed by resolving each record to a type; the attribute adds a record format the compiler and tools understand, and takes the format design away from the library. It is also what a macro cannot do with today's compiler: SE-0492 admits non-generic metatypes as constant values, but the shipping compiler rejects one in a `@section` global, so a macro cannot yet emit a constant reference to a type. Alternatives considers finishing that part of SE-0492 instead, and why it would not replace the attribute.
 
-On Apple platforms the query requires the OS release whose runtime ships it. The record is resolvable through the stable ABI alone, so a back-deployed fallback is possible, and the design keeps that option open without promising it. On Linux and Windows the runtime ships with the toolchain, so no back-deployment question arises.
+On Apple platforms the query is back-deployed, as Part I's function is: the record is resolvable through the stable ABI alone, so on an OS release whose runtime predates the query, a copy emitted into the client reads the records itself. On Linux and Windows the runtime ships with the toolchain, so no back-deployment question arises.
 
 Who may apply a key follows the key type's access level, with no new rules. An `internal` key can only be applied inside its own module, which lets a library drive the feature from its own macros without exposing the hook to consumers. A `public` key can be applied anywhere, including to types the applier does not own. A type's owner can refuse a specific key with an unavailable extension, the hatch SE-0385 defined.
 
@@ -213,7 +213,7 @@ struct CustomMetadataRecord {
 
 The two descriptor references are indirectable so that a record can refer to a type or key defined in another image. Relative pointers keep the section position-independent and readable from the file on disk, so a tool can list the attributed types of a binary without running it. That addresses the second point of the SE-0385 return notice. No function pointers are stored. Metadata is obtained through the descriptor's accessor only when a query asks for it.
 
-The record must stay resolvable from client code without private runtime entry points. Everything a reader needs is in the record itself or reachable through the stable ABI: the section bytes, the relative pointers, the context descriptor and its access function. This is what makes a back-deployed fallback of the query possible on Apple platforms, and an implementation should not trade it away for a smaller record.
+The record must stay resolvable from client code without private runtime entry points. Everything a reader needs is in the record itself or reachable through the stable ABI: the section bytes, the relative pointers, the context descriptor and its access function. The back-deployed copy of the query on Apple platforms depends on this, and an implementation should not trade it away for a smaller record.
 
 `value` is null in this version. It is reserved for the future direction that admits constant arguments on the key, so that adding them changes what the field points to and not the record layout; a runtime of this version ignores it.
 
@@ -238,13 +238,14 @@ Because this section is owned by the runtime and registered by name, the typed q
 #### The query
 
 ```swift
-public enum CustomMetadata {
-  /// Every currently loaded type that carries `key`. Unordered. Each type appears once.
-  public static func types<K>(marked key: K.Type) -> [Any.Type]
-}
+/// Every currently loaded type that carries `key`. Unordered. Each type appears once.
+@backDeployed(before: SwiftStdlib X)  // the release that adds the runtime entry point
+public func customMetadataTypes<K>(marked key: K.Type) -> [Any.Type]
 ```
 
 The runtime walks the `swift5_runtime_attributes` range of every loaded image through Part I's enumeration, skips records whose `flags` carry bits it does not define, selects records whose `attribute` descriptor resolves to `K`, skips records whose availability excludes the running OS, resolves each `type` descriptor's metadata, and returns the types. Records are deduplicated by type metadata and key metadata, which collapses a static archive linked into two images and the same key applied from two modules. The result is a snapshot of the images loaded at the time of the call. A caller that loads a plugin with `dlopen` calls again. The name leaves room for a query that also returns argument values, should that future direction land.
+
+The function is back-deployed. Where the runtime has the entry point, the function calls it; on an Apple OS release whose runtime predates it, the copy emitted into the client walks dyld's image list as Part I's fallback does, reads the `__TEXT,__swift5_rattrs` section of each image, and applies the same rules to each record. It reaches type metadata only through the stable ABI: the record's relative pointers, the context descriptor, and the descriptor's metadata access function. It is a free function for the same reason as Part I's: a namespace type, as in `CustomMetadata.types(marked:)`, cannot be back-deployed, because the type's metadata is missing from older runtimes. The query itself never touches that metadata, but if the namespace were declared available on older releases, a client that uses it as a value, as in `print(CustomMetadata.self)`, would fail to launch there, or crash at that line if the type were weak-linked, and the availability checker could not warn about either.
 
 Order is unspecified. Link order is not stable across platforms and build systems, so libraries that need an order read it from the discovered type, as a static requirement of a protocol it conforms to, and sort.
 
@@ -274,7 +275,7 @@ Additive. One record layout in an already-reserved section, two new runtime entr
 
 ## Implications on adoption
 
-Applying the attribute requires a compiler that supports it. Records emitted into a binary are inert on a runtime that does not know the section, so a library can attribute its types and still deploy to older OS versions; only the query is unavailable there. On Apple platforms Part I's function is back-deployed and works on every deployment target the toolchain supports. Part II's query requires the OS release that ships the runtime support; the attribute itself works on every deployment target, since its records are inert on an older runtime. On Linux and Windows both queries follow the toolchain.
+Applying the attribute requires a compiler that supports it. Records emitted into a binary are inert on a runtime that does not know the section, so a library can attribute its types and still deploy to older OS versions. On Apple platforms both queries are back-deployed: on an OS release whose runtime predates them, the copy emitted into the client reads the sections itself, so both work on every deployment target the toolchain supports. On Linux and Windows both queries follow the toolchain.
 
 A library can adopt and un-adopt the attribute without affecting its source or ABI compatibility, since the attribute changes no symbol and no layout of the attributed type.
 
