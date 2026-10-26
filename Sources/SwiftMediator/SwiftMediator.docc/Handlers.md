@@ -42,7 +42,7 @@ struct AuditTrail: EventHandler {
    nothing is added.
 2. A discovery record placed in a dedicated binary section; see <doc:HowDiscoveryWorks>.
 
-For `PlaceOrderHandler` above, the generated initialiser is:
+For `PlaceOrderHandler` in <doc:GettingStarted>, the generated initialiser is:
 
 ```swift
 init(resolver: any Resolver) throws {
