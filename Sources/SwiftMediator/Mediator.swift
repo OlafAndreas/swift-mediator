@@ -40,7 +40,7 @@ public final class Mediator: Sendable {
 
     public struct Configuration: Sendable {
         struct RequestEntry: Sendable {
-            let requestType: Any.Type
+            let requestType: any Request.Type
             let handlerType: Any.Type
             let make: @Sendable (any Resolver) throws -> any Sendable
         }
@@ -325,6 +325,12 @@ public final class Mediator: Sendable {
     /// The handler type registered for a request type, if any.
     public func handlerType<R: Request>(for request: R.Type) -> Any.Type? {
         requests[ObjectIdentifier(R.self)]?.handlerType
+    }
+
+    /// Every request type this mediator dispatches, after discovery, registration, stubs and
+    /// exclusions, sorted by qualified name. A transport builds its route table from this.
+    public var requestTypes: [any Request.Type] {
+        requests.values.map(\.requestType).sorted { String(reflecting: $0) < String(reflecting: $1) }
     }
 
     public var behaviorTypes: [Any.Type] { behaviors.map(\.behaviorType) }
