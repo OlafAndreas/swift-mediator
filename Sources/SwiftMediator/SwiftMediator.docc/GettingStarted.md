@@ -6,7 +6,7 @@ Add the package, define a request, write a handler, send.
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0")
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.3.0")
 
 // In a target
 .product(name: "SwiftMediator", package: "swift-mediator")
@@ -16,7 +16,7 @@ The core has no runtime dependencies. Bindings for Factory, Vapor and Fluent liv
 package traits, so a consumer who does not enable them never fetches those packages:
 
 ```swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0", traits: [.defaults, "Vapor", "Fluent"])
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.3.0", traits: [.defaults, "Vapor", "Fluent"])
 ```
 
 `@Handler` and `@Behavior` sit behind the default `Macros` trait. Listing traits replaces the
@@ -85,7 +85,7 @@ let confirmation = try await mediator.send(PlaceOrder(customerEmail: "olaf@examp
 prebuilt swift-syntax, such as Linux with Swift 6.3:
 
 ```swift
-.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.2.0", traits: [])
+.package(url: "https://github.com/OlafAndreas/swift-mediator", from: "0.3.0", traits: [])
 ```
 
 Handlers then write their own `init(resolver:)` and are registered explicitly:
