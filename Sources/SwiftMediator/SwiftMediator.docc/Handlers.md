@@ -72,6 +72,30 @@ Two types resolve in every handler and behavior without registration:
 - Handlers are instantiated per `send` and per `publish`, inside the behaviors that wrap
   them. Keep construction cheap and keep state in your dependencies.
 
+## Handlers in front of an existing service
+
+When the state lives in a service or actor that already exists, each handler is a thin
+adapter: it maps the request's fields onto one method call.
+
+```swift
+@Handler
+struct CancelOrderHandler: RequestHandler {
+    let orders: OrderService
+
+    func handle(_ request: CancelOrder) async throws {
+        try await orders.cancel(id: request.orderID, reason: request.reason)
+    }
+}
+```
+
+That is the expected shape. The mapping line is the part only you can write. The rest gives
+discovery a type to find and lets you test or replace the handler on its own, while behaviors
+wrap it like any other. A request whose `Response` is `Void` needs no return.
+
+A service cannot be the handler for several requests itself: `RequestHandler` names one
+`Req`, and a type conforms to a protocol only once. Keep the handlers small and the state in
+the service.
+
 ## Explicit registration, stubs and exclusions
 
 Discovery can be turned off or combined with explicit configuration:
