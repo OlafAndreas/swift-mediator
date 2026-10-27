@@ -24,8 +24,8 @@ struct Logging: PipelineBehavior {
 ## Ordering
 
 `static var order: Int` decides nesting. Lower runs first, outermost. The default is 0.
-Behaviors with equal order run in discovery order, which is binary layout order, so any
-behavior that depends on another having run before it must say so with `order`.
+Behaviors with equal order run in discovery order, which is stable but not alphabetical, so
+any behavior that depends on another having run before it must say so with `order`.
 
 ```
 Validation(-100) → FluentTransaction(-50) → Logging(0) → Retry(50) → Timing(100) → handler
