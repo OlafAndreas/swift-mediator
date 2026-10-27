@@ -35,7 +35,7 @@ result per key. ``Mediator/discoveredTypes(_:)`` is the mediator's view of it.
   each image's section headers from disk, because ELF does not map them.
 - Windows PE is not implemented; register explicitly there.
 
-Results are deduplicated and sorted by qualified name, so registration order is stable.
+Results are deduplicated and sorted by mangled name, so registration order is the same on every launch of a binary. It is not alphabetical.
 The index is built once; images loaded after that show up in `Discoverable.rescan()`.
 
 Each recovered type is cast to `any RequestHandler.Type`, `any EventHandler.Type` or
