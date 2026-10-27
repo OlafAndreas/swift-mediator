@@ -13,10 +13,13 @@ section with `@section` and `@used`:
 @section("__DATA_CONST,__swift5_discov") @used
 private let __mediator_record_PlaceOrderHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
     version: 1, flags: 0,
-    type: { unsafeBitCast(PlaceOrderHandler.self as Any.Type, to: UnsafeRawPointer.self) },
-    key: { unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self) }
+    type: { unsafe unsafeBitCast(PlaceOrderHandler.self as Any.Type, to: UnsafeRawPointer.self) },
+    key: { unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self) }
 )
 ```
+
+That is the Mach-O form. The expansion also carries the same record for ELF, in
+`swift5_discov`, and for Windows, in the `$B` group of the image section `.discov`.
 
 Only constant expressions may initialise such a global, so the record is a tuple whose
 accessors are non-capturing C function pointers returning type metadata. The `key` names
@@ -33,7 +36,8 @@ result per key. ``Mediator/discoveredTypes(_:)`` is the mediator's view of it.
   On Mach-O it registers with dyld, so every image is seen, including ones loaded later.
   On ELF (Linux, Android, FreeBSD) it enumerates images with `dl_iterate_phdr` and re-reads
   each image's section headers from disk, because ELF does not map them.
-- Windows PE is not implemented; register explicitly there.
+- On Windows it lists the process's modules and reads each module's section table in
+  place. As on ELF, modules loaded later show up only on the next scan.
 
 Results are deduplicated and sorted by mangled name, so registration order is the same on every launch of a binary. It is not alphabetical.
 The index is built once; images loaded after that show up in `Discoverable.rescan()`.

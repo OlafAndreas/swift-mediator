@@ -29,9 +29,9 @@ let package = Package(
         .trait(name: "Fluent", description: "Enables SwiftMediatorFluent and fetches vapor/fluent. Implies Vapor.", enabledTraits: ["Vapor"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"605.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"606.0.0-latest"),
         // Keyed type discovery over SE-0492 section records.
-        .package(url: "https://github.com/OlafAndreas/swift-discovery.git", from: "0.3.1"),
+        .package(url: "https://github.com/OlafAndreas/swift-discovery.git", from: "0.5.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin.git", from: "1.4.0"),
         // Fetched only when a target depends on them under an enabled trait.
         .package(url: "https://github.com/hmlongco/Factory.git", from: "3.4.0"),
