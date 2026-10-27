@@ -65,6 +65,18 @@ final class DiscoverableMacroTests: XCTestCase {
                     unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
+            #elseif os(Windows)
+            @section(".discov$B") @used
+            private let __mediator_record_CreateUserHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafe unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                }
+            )
             #endif
             """,
             macros: macros
@@ -101,6 +113,18 @@ final class DiscoverableMacroTests: XCTestCase {
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_discov") @used
+            private let __mediator_record_Logging: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafe unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                }
+            )
+            #elseif os(Windows)
+            @section(".discov$B") @used
             private let __mediator_record_Logging: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
                 version: 1,
                 flags: 0,
@@ -156,6 +180,18 @@ final class DiscoverableMacroTests: XCTestCase {
                     unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
+            #elseif os(Windows)
+            @section(".discov$B") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                }
+            )
             #endif
             """,
             macros: macros
@@ -190,6 +226,18 @@ final class DiscoverableMacroTests: XCTestCase {
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
             @section("swift5_discov") @used
+            private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                version: 1,
+                flags: 0,
+                type: {
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                },
+                key: {
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                }
+            )
+            #elseif os(Windows)
+            @section(".discov$B") @used
             private let __mediator_record_H: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
                 version: 1,
                 flags: 0,
@@ -237,6 +285,18 @@ final class DiscoverableMacroTests: XCTestCase {
                 )
                 #elseif os(Linux) || os(Android) || os(FreeBSD)
                 @section("swift5_discov") @used
+                private static let __mediator_record_CountHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
+                    version: 1,
+                    flags: 0,
+                    type: {
+                        unsafe unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                    },
+                    key: {
+                        unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    }
+                )
+                #elseif os(Windows)
+                @section(".discov$B") @used
                 private static let __mediator_record_CountHandler: (version: UInt32, flags: UInt32, type: @convention(c) () -> UnsafeRawPointer, key: @convention(c) () -> UnsafeRawPointer) = (
                     version: 1,
                     flags: 0,
