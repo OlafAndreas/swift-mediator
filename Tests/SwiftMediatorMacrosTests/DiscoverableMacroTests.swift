@@ -47,10 +47,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
@@ -59,10 +59,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(CreateUserHandler.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -93,10 +93,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
@@ -105,10 +105,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(Logging.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -138,10 +138,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
@@ -150,10 +150,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -182,10 +182,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #elseif os(Linux) || os(Android) || os(FreeBSD)
@@ -194,10 +194,10 @@ final class DiscoverableMacroTests: XCTestCase {
                 version: 1,
                 flags: 0,
                 type: {
-                    unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(H.self as Any.Type, to: UnsafeRawPointer.self)
                 },
                 key: {
-                    unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                    unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                 }
             )
             #endif
@@ -229,10 +229,10 @@ final class DiscoverableMacroTests: XCTestCase {
                     version: 1,
                     flags: 0,
                     type: {
-                        unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                        unsafe unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
                     },
                     key: {
-                        unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                        unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                     }
                 )
                 #elseif os(Linux) || os(Android) || os(FreeBSD)
@@ -241,10 +241,10 @@ final class DiscoverableMacroTests: XCTestCase {
                     version: 1,
                     flags: 0,
                     type: {
-                        unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
+                        unsafe unsafeBitCast(CountHandler.self as Any.Type, to: UnsafeRawPointer.self)
                     },
                     key: {
-                        unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
+                        unsafe unsafeBitCast(SwiftMediator.MediatorComponents.self as Any.Type, to: UnsafeRawPointer.self)
                     }
                 )
                 #endif
