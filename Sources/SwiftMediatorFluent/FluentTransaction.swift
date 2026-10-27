@@ -27,10 +27,13 @@ public struct FluentTransaction: PipelineBehavior {
 
     public func handle<R: SwiftMediator.Request>(_ message: R, next: Next<R>) async throws -> R.Response {
         guard message is any Transactional else { return try await next(message) }
-        // `transaction` takes an escaping closure; `next` is non-escaping but never outlives this call.
+        // `transaction` takes an escaping closure, and its future chain can release that closure
+        // after the transaction returns. The closure holds a box that lets go of `next` first.
         return try await withoutActuallyEscaping(next) { next in
-            try await request.db.transaction { db in
-                try await CurrentDatabase.$transaction.withValue(db) { try await next(message) }
+            let box = NextBox(next)
+            defer { box.release() }
+            return try await request.db.transaction { db in
+                try await CurrentDatabase.$transaction.withValue(db) { try await box(message) }
             }
         }
     }
@@ -46,5 +49,22 @@ public extension Application {
             scope.register((any Database).self) { _ in CurrentDatabase.transaction ?? req.db }
         }
     }
+}
+
+/// Holds `next` for a closure that can outlive the call that runs it.
+private final class NextBox<R: SwiftMediator.Request>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var next: Next<R>?
+
+    init(_ next: @escaping Next<R>) { self.next = next }
+
+    func callAsFunction(_ message: R) async throws -> R.Response {
+        guard let next = lock.withLock({ self.next }) else {
+            preconditionFailure("FluentTransaction ran its closure after the transaction returned")
+        }
+        return try await next(message)
+    }
+
+    func release() { lock.withLock { next = nil } }
 }
 #endif
